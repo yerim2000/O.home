@@ -162,6 +162,7 @@ export default function RpPage() {
   // 방 개설 모달
   const [newOpen, setNewOpen] = useState(false);
   const [nTitle, setNTitle] = useState('');
+  const [nFormat, setNFormat] = useState<'trpg' | 'sms'>('trpg');
   const [nRel, setNRel] = useState('none');
   const [nAu, setNAu] = useState('base');   // 고른 자관의 AU (v2.0 사용자 요청)
   const [nMembers, setNMembers] = useState<string[]>([]);
@@ -181,7 +182,7 @@ export default function RpPage() {
     if (!nTitle.trim()) { toast('방 제목을 입력해 주세요'); return; }
     const members = Array.from(new Set([user.id, ...nMembers]));
     const room: RpRoom = {
-      id: newId(), title: nTitle.trim(), relId: nRel === 'none' ? undefined : nRel,
+      id: newId(), title: nTitle.trim(), format: nFormat, relId: nRel === 'none' ? undefined : nRel,
       // 원래 설정(base)이면 남기지 않는다 — 예전 방과 같은 모습이라 되돌리기도 쉽다
       auId: nRel !== 'none' && nAu !== 'base' ? nAu : undefined,
       memberIds: members, status: 'ongoing', isPublic: false,
@@ -509,6 +510,17 @@ ${rows}
             <label className="k-label" style={{ marginBottom: 5 }}>Title</label>
             <KInput value={nTitle} onChange={e => setNTitle(e.target.value)} />
           </div>
+          <div>
+  <label className="k-label" style={{ marginBottom: 5 }}>진행 형식</label>
+  <KSelect
+    value={nFormat}
+    onChange={v => setNFormat(v as 'trpg' | 'sms')}
+    options={[
+      { value: 'trpg', label: 'TRPG형 (기존 화면)' },
+      { value: 'sms', label: '문자형 (휴대폰 메시지)' },
+    ]}
+  />
+</div>
           {/* 기반 자관 + 그 자관의 AU (v2.0 사용자 요청) — AU를 고르면 방 안의 캐릭터가
               그 AU 프로필(이름·색·이미지)로 보인다. AU가 없는 자관에는 옆 칸이 뜨지 않는다 */}
           <div>
