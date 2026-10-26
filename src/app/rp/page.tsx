@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 // 역극 (4.9) — 실시간 채팅형. 방 개설(자관 기반/자유) · 참여자에게만 존재 노출 ·
 // 캐릭터 선택 발화(테마색 말풍선) · 지문(/desc) · 메시지 수정/삭제 · 완결/공개 전환 · HTML 내보내기
 // ※ 실시간 송수신·입력 중 표시·참여자 전원 동의는 Supabase Realtime 연동 시 활성화 (현재 localStorage)
@@ -162,7 +162,6 @@ export default function RpPage() {
   // 방 개설 모달
   const [newOpen, setNewOpen] = useState(false);
   const [nTitle, setNTitle] = useState('');
-  const [nFormat, setNFormat] = useState<'trpg' | 'sms'>('trpg');
   const [nRel, setNRel] = useState('none');
   const [nAu, setNAu] = useState('base');   // 고른 자관의 AU (v2.0 사용자 요청)
   const [nMembers, setNMembers] = useState<string[]>([]);
@@ -178,12 +177,11 @@ export default function RpPage() {
   // 고른 자관의 AU 목록 (기본 설정 줄은 위 셀렉트가 직접 넣는다)
   const newRelAus = (rels.find(r => r.id === nRel)?.aus ?? []).filter(a => a.id !== 'base');
   const createRoom = () => {
-    console.log('선택한 형식:', nFormat);
     if (!user) return;
     if (!nTitle.trim()) { toast('방 제목을 입력해 주세요'); return; }
     const members = Array.from(new Set([user.id, ...nMembers]));
     const room: RpRoom = {
-      id: newId(), title: nTitle.trim(), format: nFormat, relId: nRel === 'none' ? undefined : nRel,
+      id: newId(), title: nTitle.trim(), relId: nRel === 'none' ? undefined : nRel,
       // 원래 설정(base)이면 남기지 않는다 — 예전 방과 같은 모습이라 되돌리기도 쉽다
       auId: nRel !== 'none' && nAu !== 'base' ? nAu : undefined,
       memberIds: members, status: 'ongoing', isPublic: false,
@@ -355,129 +353,9 @@ ${rows}
         </div>
 
         {/* 채팅 */}
-        <div className={`panel rp-chat ${sel?.format === 'sms' ? 'rp-chat-sms' : ''}`}>
+        <div className="panel rp-chat">
           {sel ? (
-            {sel.format === 'sms' ? (
-  <div className="rp-sms-phone">
-    <div className="rp-sms-header">
-      <span className="rp-sms-back">‹</span>
-      <div className="rp-sms-contact">
-        <b>{sel.title}</b>
-        <small>{roomLabel(sel)}</small>
-      </div>
-      <span className="rp-sms-menu">•••</span>
-    </div>
-
-    <div className="rp-sms-toolbar">
-      <span>{sel.status === 'done' ? '완결' : '대화 중'}</span>
-      <div>
-        {canManage && sel.status === 'ongoing' && (
-          <button className="btn btn-ghost" onClick={() => setEndAsk(true)}>END</button>
-        )}
-        {canManage && (
-          <button className="btn btn-ghost" onClick={removeRoom}>DELETE</button>
-        )}
-      </div>
-    </div>
-
-    <div className="rp-msgs rp-sms-msgs" ref={msgsRef}>
-      {msgsOf(sel).map(m => {
-        const mine = m.authorId === user.id;
-
-        if (m.kind === 'desc') {
-          return (
-            <div key={m.id} className="rp-sms-desc">
-              {m.text}
-              {mine && (
-                <span className="m-act">
-                  <button onClick={() => { setEditMsg(m); setEditText(m.text); }}>EDIT</button>
-                  <button onClick={() => removeMsg(m)}>DEL</button>
-                </span>
-              )}
-            </div>
-          );
-        }
-
-        const ch = rpChars.find(c => c.id === m.charId);
-        const name = ch?.name ?? '';
-        const rightSide = ch
-          ? (!!charGrant(ch, user.id) || (!!ch.own && isAdmin))
-          : (!!m.charOwn && isAdmin);
-
-        return (
-          <div
-            key={m.id}
-            className={`rp-sms-row ${rightSide ? 'me' : 'other'}`}
-            style={{ ['--cc' as string]: hexRgb(ch?.color) }}
-          >
-            {!rightSide && <Face ch={ch} className="rp-sms-face" />}
-
-            <div className="rp-sms-message">
-              {!rightSide && <small className="rp-sms-name">{name}</small>}
-              <div className="rp-sms-bubble">{m.text}</div>
-              <div className="rp-sms-time">{fmtHM(m.date)}</div>
-            </div>
-
-            {mine && (
-              <span className="m-act">
-                <button onClick={() => { setEditMsg(m); setEditText(m.text); }}>EDIT</button>
-                <button onClick={() => removeMsg(m)}>DEL</button>
-              </span>
-            )}
-          </div>
-        );
-      })}
-
-      {msgsOf(sel).length === 0 && (
-        <p className="hint" style={{ textAlign: 'center', marginTop: 30 }}>
-          첫 메시지를 남겨보세요
-        </p>
-      )}
-    </div>
-
-    {sel.status === 'ongoing' && (
-      <div className="rp-sms-input">
-        <div className="rp-sms-speaker">
-          <div className="char-pick" onClick={() => setPickOpen(o => !o)}>
-            {speaker === 'desc'
-              ? <div className="f" style={{ display: 'grid', placeItems: 'center' }}>❝</div>
-              : <Face ch={speakerChar} className="f" />}
-            <small>{speakerLabel} ▾</small>
-
-            {pickOpen && (
-              <div className="rp-pick-pop" onClick={e => e.stopPropagation()}>
-                {speakChars.map(c => (
-                  <button key={c.id} onClick={() => { setSpeaker(c.id); setPickOpen(false); }}>
-                    <Face ch={c} className="f" />{c.name}
-                  </button>
-                ))}
-                <button onClick={() => { setSpeaker('desc'); setPickOpen(false); }}>
-                  <span className="f">❝</span> 지문 (DESC)
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <KTextarea
-          style={{ minHeight: 40 }}
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onFocus={() => setMFocus(true)}
-          onBlur={() => setTimeout(() => setMFocus(false), 180)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-          }}
-        />
-        <button className="btn btn-dark" onClick={send}>➤</button>
-      </div>
-    )}
-  </div>
-) : (
-  <>
+            <>
               <div className="rp-head">
                 <div>
                   <b>{sel.title}</b>
@@ -506,7 +384,7 @@ ${rows}
                       </button>
                       <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5 }}
                         onClick={exportHtml}>EXPORT</button>
-                    </>)}
+                    </>
                   )}
                   {canManage && (
                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5 }}
@@ -631,17 +509,6 @@ ${rows}
             <label className="k-label" style={{ marginBottom: 5 }}>Title</label>
             <KInput value={nTitle} onChange={e => setNTitle(e.target.value)} />
           </div>
-          <div>
-  <label className="k-label" style={{ marginBottom: 5 }}>진행 형식</label>
-  <KSelect
-    value={nFormat}
-    onChange={v => setNFormat(v as 'trpg' | 'sms')}
-    options={[
-      { value: 'trpg', label: 'TRPG형 (기존 화면)' },
-      { value: 'sms', label: '문자형 (휴대폰 메시지)' },
-    ]}
-  />
-</div>
           {/* 기반 자관 + 그 자관의 AU (v2.0 사용자 요청) — AU를 고르면 방 안의 캐릭터가
               그 AU 프로필(이름·색·이미지)로 보인다. AU가 없는 자관에는 옆 칸이 뜨지 않는다 */}
           <div>
