@@ -354,7 +354,7 @@ ${rows}
         </div>
 
         {/* 채팅 */}
-        <div className="panel rp-chat">
+        <div className={`panel rp-chat ${sel?.format === 'sms' ? 'rp-chat-sms' : ''}`}>
           {sel ? (
             <>
               <div className="rp-head">
