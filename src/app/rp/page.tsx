@@ -357,7 +357,127 @@ ${rows}
         {/* 채팅 */}
         <div className={`panel rp-chat ${sel?.format === 'sms' ? 'rp-chat-sms' : ''}`}>
           {sel ? (
-            <>
+            {sel.format === 'sms' ? (
+  <div className="rp-sms-phone">
+    <div className="rp-sms-header">
+      <span className="rp-sms-back">‹</span>
+      <div className="rp-sms-contact">
+        <b>{sel.title}</b>
+        <small>{roomLabel(sel)}</small>
+      </div>
+      <span className="rp-sms-menu">•••</span>
+    </div>
+
+    <div className="rp-sms-toolbar">
+      <span>{sel.status === 'done' ? '완결' : '대화 중'}</span>
+      <div>
+        {canManage && sel.status === 'ongoing' && (
+          <button className="btn btn-ghost" onClick={() => setEndAsk(true)}>END</button>
+        )}
+        {canManage && (
+          <button className="btn btn-ghost" onClick={removeRoom}>DELETE</button>
+        )}
+      </div>
+    </div>
+
+    <div className="rp-msgs rp-sms-msgs" ref={msgsRef}>
+      {msgsOf(sel).map(m => {
+        const mine = m.authorId === user.id;
+
+        if (m.kind === 'desc') {
+          return (
+            <div key={m.id} className="rp-sms-desc">
+              {m.text}
+              {mine && (
+                <span className="m-act">
+                  <button onClick={() => { setEditMsg(m); setEditText(m.text); }}>EDIT</button>
+                  <button onClick={() => removeMsg(m)}>DEL</button>
+                </span>
+              )}
+            </div>
+          );
+        }
+
+        const ch = rpChars.find(c => c.id === m.charId);
+        const name = ch?.name ?? '';
+        const rightSide = ch
+          ? (!!charGrant(ch, user.id) || (!!ch.own && isAdmin))
+          : (!!m.charOwn && isAdmin);
+
+        return (
+          <div
+            key={m.id}
+            className={`rp-sms-row ${rightSide ? 'me' : 'other'}`}
+            style={{ ['--cc' as string]: hexRgb(ch?.color) }}
+          >
+            {!rightSide && <Face ch={ch} className="rp-sms-face" />}
+
+            <div className="rp-sms-message">
+              {!rightSide && <small className="rp-sms-name">{name}</small>}
+              <div className="rp-sms-bubble">{m.text}</div>
+              <div className="rp-sms-time">{fmtHM(m.date)}</div>
+            </div>
+
+            {mine && (
+              <span className="m-act">
+                <button onClick={() => { setEditMsg(m); setEditText(m.text); }}>EDIT</button>
+                <button onClick={() => removeMsg(m)}>DEL</button>
+              </span>
+            )}
+          </div>
+        );
+      })}
+
+      {msgsOf(sel).length === 0 && (
+        <p className="hint" style={{ textAlign: 'center', marginTop: 30 }}>
+          첫 메시지를 남겨보세요
+        </p>
+      )}
+    </div>
+
+    {sel.status === 'ongoing' && (
+      <div className="rp-sms-input">
+        <div className="rp-sms-speaker">
+          <div className="char-pick" onClick={() => setPickOpen(o => !o)}>
+            {speaker === 'desc'
+              ? <div className="f" style={{ display: 'grid', placeItems: 'center' }}>❝</div>
+              : <Face ch={speakerChar} className="f" />}
+            <small>{speakerLabel} ▾</small>
+
+            {pickOpen && (
+              <div className="rp-pick-pop" onClick={e => e.stopPropagation()}>
+                {speakChars.map(c => (
+                  <button key={c.id} onClick={() => { setSpeaker(c.id); setPickOpen(false); }}>
+                    <Face ch={c} className="f" />{c.name}
+                  </button>
+                ))}
+                <button onClick={() => { setSpeaker('desc'); setPickOpen(false); }}>
+                  <span className="f">❝</span> 지문 (DESC)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <KTextarea
+          style={{ minHeight: 40 }}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onFocus={() => setMFocus(true)}
+          onBlur={() => setTimeout(() => setMFocus(false), 180)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+        />
+        <button className="btn btn-dark" onClick={send}>➤</button>
+      </div>
+    )}
+  </div>
+) : (
+  <>
               <div className="rp-head">
                 <div>
                   <b>{sel.title}</b>
@@ -386,7 +506,7 @@ ${rows}
                       </button>
                       <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5 }}
                         onClick={exportHtml}>EXPORT</button>
-                    </>
+                    </>)}
                   )}
                   {canManage && (
                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5 }}
