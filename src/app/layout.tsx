@@ -1,3 +1,4 @@
+import PhoneDM from "@/components/PhoneDM";
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/lib/ThemeProvider';
