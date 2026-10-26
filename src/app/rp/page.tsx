@@ -178,6 +178,7 @@ export default function RpPage() {
   // 고른 자관의 AU 목록 (기본 설정 줄은 위 셀렉트가 직접 넣는다)
   const newRelAus = (rels.find(r => r.id === nRel)?.aus ?? []).filter(a => a.id !== 'base');
   const createRoom = () => {
+    console.log('선택한 형식:', nFormat);
     if (!user) return;
     if (!nTitle.trim()) { toast('방 제목을 입력해 주세요'); return; }
     const members = Array.from(new Set([user.id, ...nMembers]));
