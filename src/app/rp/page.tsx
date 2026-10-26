@@ -416,11 +416,15 @@ ${rows}
                   // 그래서 같은 방이라도 사람마다 좌우가 반대로 보인다(각자 자기 쪽이 오른쪽).
                   // 삭제된 캐릭터는 발화 당시 기록(charOwn)으로 판단.
                   const rightSide = m.authorId === user.id;
-              console.log("작성자:", m.authorId, "내 ID:", user.id, "오른쪽:", rightSide);
-                  return (
-                    <div key={m.id} className={`msg ${rightSide ? 'me' : ''}`} style={{ ['--cc' as string]: hexRgb(ch?.color) }}>
-                      <Face ch={ch} className="face" />
-                      <div>
+
+return (
+  <div
+    key={m.id}
+    className={`msg ${rightSide ? 'me' : ''}`}
+    style={{ ['--cc' as string]: hexRgb(ch?.color) }}
+  >
+    <Face ch={ch} className="face" />
+    <div>
                         <div className="who">{name}</div>
                         <div className="bub">{m.text}</div>
                         <div style={{ fontSize: 9, color: 'var(--faint)', marginTop: 3 }}>{fmtHM(m.date)}</div>
