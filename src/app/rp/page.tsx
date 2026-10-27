@@ -3,6 +3,8 @@
 // 캐릭터 선택 발화(테마색 말풍선) · 지문(/desc) · 메시지 수정/삭제 · 완결/공개 전환 · HTML 내보내기
 // ※ 실시간 송수신·입력 중 표시·참여자 전원 동의는 Supabase Realtime 연동 시 활성화 (현재 localStorage)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { putBlob, useBlobUrl } from '@/lib/blobStore';
 import { useAuth } from '@/lib/auth';
 import { useLocalList, newId } from '@/lib/postStore';
 import {
@@ -22,6 +24,37 @@ function Face({ ch, className }: { ch?: Character; className: string }) {
     <div className={`${className} ${!ch?.thumbId ? `ph ${ch?.thumbClass ?? ''}` : ''}`}>
       {ch?.thumbId && <CroppedBlobImg fileRef={ch.thumbId} crop={ch.thumbCrop} />}
     </div>
+  );
+}
+
+/** 역극 채팅 이미지 — 말풍선에 보이고 선택하면 확대 보기 */
+function RpImageAttachment({ fileRef, name }: { fileRef: string; name?: string }) {
+  const url = useBlobUrl(fileRef);
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (!expanded) return;
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [expanded]);
+  if (!url) return <span className="rp-attach-unavailable">이미지를 불러올 수 없습니다.</span>;
+  return (
+    <>
+      <button type="button" className="rp-chat-image" title="이미지 확대 보기"
+        aria-label={(name ?? '첨부 이미지') + ' 확대 보기'} onClick={() => setExpanded(true)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={name ?? '역극 이미지'} loading="lazy" />
+      </button>
+      {expanded && createPortal(
+        <div className="lightbox rp-image-lightbox" role="dialog" aria-modal="true"
+          aria-label="역극 이미지 확대 보기" onClick={() => setExpanded(false)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt={name ?? '역극 이미지'} onClick={e => e.stopPropagation()} />
+          <button type="button" className="x" aria-label="닫기"
+            onClick={() => setExpanded(false)}>×</button>
+        </div>, document.body
+      )}
+    </>
   );
 }
 
@@ -109,30 +142,74 @@ export default function RpPage() {
   }, [sel?.id, msgRows.length]);
 
   const [text, setText] = useState('');
-  const send = () => {
-    if (!sel || !user) return;
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const msgRowsLatest = useRef(msgRows);
+  msgRowsLatest.current = msgRows;
+
+  useEffect(() => {
+    if (!imageFile) { setImagePreview(null); return; }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
+
+  useEffect(() => {
+    setImageFile(null);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  }, [sel?.id]);
+
+  const pickImage = (file?: File) => {
+    if (!file) return;
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) {
+      toast('JPG, PNG, GIF, WEBP 이미지 파일만 첨부할 수 있습니다.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast('이미지는 최대 8MB까지 첨부할 수 있습니다.');
+      return;
+    }
+    setImageFile(file);
+  };
+
+  const send = async () => {
+    if (!sel || !user || sending) return;
     let t = text.trim();
-    if (!t) return;
+    if (!t && !imageFile) return;
     let kind: RpMessage['kind'] = speaker === 'desc' ? 'desc' : 'char';
-    if (t.startsWith('/desc ')) { kind = 'desc'; t = t.slice(6).trim(); } // /desc 명령 (v1.8)
-    if (!t) return;
-    const m: RpMessage = {
-      id: newId(), kind, charId: kind === 'char' ? speaker : undefined,
-      // 발화 당시 소유 기록 — 캐릭터가 삭제돼도 재연동 시 어느 리스트에서 고를지 판별 (v1.9)
-      charOwn: kind === 'char' ? rpChars.find(c => c.id === speaker)?.own : undefined,
-      authorId: user.id, text: t, date: new Date().toISOString(),
-    };
-    // 방은 건드리지 않는다 — 발화만 자기 행으로 (v2.0)
-    setMsgRows([...msgRows, { ...m, roomId: sel.id }]);
-    rpMarkRead(sel.id, user.id, m.date);
-    setText('');
-    // 알림 (4.13) — 나를 제외한 참여자에게, 방 단위로 묶어서 (디스코드 DM은 봇 연동 시)
-    memberIdsOf(sel).filter(id => id !== user.id).forEach(id =>
-      pushNotif({
-        type: 'rp', toUserId: id, href: '/rp', dedupeKey: `rp:${sel.id}`,
-        title: `역극 「${sel.title}」 새 메시지`,
-        body: t.slice(0, 60),
-      }));
+    if (t.startsWith('/desc ')) { kind = 'desc'; t = t.slice(6).trim(); }
+    if (!t && !imageFile) return;
+    const room = sel;
+    const file = imageFile;
+    const authorId = user.id;
+    setSending(true);
+    try {
+      const imageRef = file ? await putBlob(file) : undefined;
+      const m: RpMessage = {
+        id: newId(), kind, charId: kind === 'char' ? speaker : undefined,
+        charOwn: kind === 'char' ? rpChars.find(c => c.id === speaker)?.own : undefined,
+        authorId, text: t, imageRef, imageName: file?.name,
+        date: new Date().toISOString(),
+      };
+      // 방은 수정하지 않고 기존 발화 컬렉션에 이미지 주소를 함께 저장한다.
+      setMsgRows([...msgRowsLatest.current, { ...m, roomId: room.id }]);
+      rpMarkRead(room.id, authorId, m.date);
+      setText('');
+      setImageFile(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      memberIdsOf(room).filter(id => id !== authorId).forEach(id =>
+        pushNotif({
+          type: 'rp', toUserId: id, href: '/rp', dedupeKey: `rp:${room.id}`,
+          title: `역극 「${room.title}」 새 메시지`,
+          body: imageRef ? (t ? t.slice(0, 45) + ' · 이미지 첨부' : '이미지를 보냈습니다.') : t.slice(0, 60),
+        }));
+    } catch (error) {
+      toast('이미지 전송에 실패했습니다: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setSending(false);
+    }
   };
 
   // 메시지 수정(본인) — 모달
@@ -140,7 +217,7 @@ export default function RpPage() {
   const [editText, setEditText] = useState('');
   const saveMsg = () => {
     if (!sel || !editMsg) return;
-    if (!editText.trim()) { toast('내용을 입력해 주세요'); return; }
+    if (!editText.trim() && !editMsg.imageRef) { toast('내용을 입력해 주세요'); return; }
     const t = editText.trim();
     if (msgRows.some(x => x.id === editMsg.id)) {
       setMsgRows(msgRows.map(x => (x.id === editMsg.id ? { ...x, text: t } : x)));
@@ -257,14 +334,21 @@ export default function RpPage() {
   const exportHtml = () => {
     if (!sel) return;
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    const imgHtml = (m: RpMessage): string => {
+      if (!m.imageRef) return '';
+      if (!/^https?:\/\//.test(m.imageRef)) return '<div>[첨부 이미지 — 이 기기에만 저장된 파일]</div>';
+      const safe = m.imageRef.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<div><img src="${safe}" alt="첨부 이미지" style="display:block;max-width:100%;max-height:480px;object-fit:contain;margin:8px 0;border-radius:8px"></div>`;
+    };
     const rows = msgsOf(sel).map(m => {
       if (m.kind === 'desc') {
-        return `<p style="text-align:center;color:#4a505a;line-height:1.8;margin:14px 0">${esc(m.text)}</p>`;
+        return `<div style="text-align:center;color:#4a505a;line-height:1.8;margin:14px 0">${esc(m.text)}${imgHtml(m)}</div>`;
       }
       const ch = rpChars.find(c => c.id === m.charId);
       const name = ch?.name ?? '';
       const color = ch?.color ?? '#5d636d';
-      return `<div style="margin:10px 0;line-height:1.7"><b style="color:${color};letter-spacing:.05em">${esc(name)}</b> — ${esc(m.text)}</div>`;
+      return `<div style="margin:10px 0;line-height:1.7"><b style="color:${color};letter-spacing:.05em">${esc(name)}</b> — ${esc(m.text)}${imgHtml(m)}</div>`;
     }).join('\n');
     const html = `<div style="font-family:sans-serif;max-width:720px;margin:0 auto">
 <h2 style="letter-spacing:.08em">${esc(sel.title)}</h2>
@@ -399,7 +483,8 @@ ${rows}
                   if (m.kind === 'desc') {
                     return (
                       <div key={m.id} className="msg-desc">
-                        {m.text}
+                        {m.text && <span className="rp-desc-text">{m.text}</span>}
+                        {m.imageRef && <RpImageAttachment fileRef={m.imageRef} name={m.imageName} />}
                         {mine && (
                           <span className="m-act">
                             <button onClick={() => { setEditMsg(m); setEditText(m.text); }}>EDIT</button>
@@ -424,7 +509,10 @@ ${rows}
     <Face ch={ch} className="face" />
     <div>
                         <div className="who">{name}</div>
-                        <div className="bub">{m.text}</div>
+                        <div className="bub">
+                          {m.text && <span className="rp-bubble-text">{m.text}</span>}
+                          {m.imageRef && <RpImageAttachment fileRef={m.imageRef} name={m.imageName} />}
+                        </div>
                         <div style={{ fontSize: 9, color: 'var(--faint)', marginTop: 3 }}>{fmtHM(m.date)}</div>
                       </div>
                       {mine && (
@@ -463,13 +551,41 @@ ${rows}
                       </div>
                     )}
                   </div>
-                  {/* 플레이스홀더 없음 (v1.8) · Enter 전송 / Shift+Enter 줄바꿈 · /desc 명령 지원
-                      포커스 중엔 모바일에서 역극 영역만 표시 (v1.9 — blur는 SEND 클릭이 씹히지 않게 지연) */}
-                  <KTextarea style={{ minHeight: 44 }} value={text} onChange={e => setText(e.target.value)}
-                    onFocus={() => setMFocus(true)}
-                    onBlur={() => setTimeout(() => setMFocus(false), 180)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
-                  <button className="btn btn-dark" onClick={send}>SEND</button>
+                  <div className="rp-compose-body">
+                    {imageFile && imagePreview && (
+                      <div className="rp-image-preview">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imagePreview} alt="보낼 이미지 미리보기" />
+                        <span title={imageFile.name}>{imageFile.name}</span>
+                        <button type="button" title="첨부 취소" aria-label="첨부 이미지 제거"
+                          onClick={() => { setImageFile(null); if (imageInputRef.current) imageInputRef.current.value = ''; }}
+                          disabled={sending}>×</button>
+                      </div>
+                    )}
+                    <KTextarea style={{ minHeight: 44, width: '100%' }} value={text}
+                      onChange={e => setText(e.target.value)} disabled={sending}
+                      onFocus={() => setMFocus(true)}
+                      onBlur={() => setTimeout(() => setMFocus(false), 180)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
+                  </div>
+                  <input ref={imageInputRef} className="rp-file-input" type="file"
+                    accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                    aria-label="이미지 파일 선택"
+                    onChange={e => pickImage(e.target.files?.[0])} />
+                  <button className="btn btn-ghost rp-attach-button" type="button"
+                    title="이미지 첨부" aria-label="이미지 첨부"
+                    onClick={() => imageInputRef.current?.click()} disabled={sending}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="3" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <path d="m4 18 5.5-6 3.5 3.5 2-2L20 18" />
+                    </svg>
+                  </button>
+                  <button className="btn btn-dark" onClick={() => void send()}
+                    disabled={sending || (!text.trim() && !imageFile)}>
+                    {sending ? 'UPLOADING…' : 'SEND'}
+                  </button>
                 </div>
               )}
             </>
