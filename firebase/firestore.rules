@@ -58,6 +58,31 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── 개인 메시지: 대화 참여자만 접근 가능 ───────────────────
+    match /dm_rooms/{roomId} {
+      allow read: if signedIn()
+        && request.auth.uid in resource.data.data.memberIds;
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.auth.uid in request.resource.data.data.memberIds;
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.data.memberIds
+        && request.resource.data.data.memberIds == resource.data.data.memberIds;
+      allow delete: if signedIn()
+        && request.auth.uid in resource.data.data.memberIds
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    match /dm_messages/{messageId} {
+      allow read: if signedIn()
+        && request.auth.uid in resource.data.data.memberIds;
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.data.senderId == request.auth.uid
+        && request.auth.uid in request.resource.data.data.memberIds;
+      allow update, delete: if false;
+    }
+
     // ── 콘텐츠 ─────────────────────────────────────────────────
     match /{coll}/{docId} {
       // 읽기: 전체공개 / 멤버공개(로그인) / 내가 쓴 것 / 관리자
