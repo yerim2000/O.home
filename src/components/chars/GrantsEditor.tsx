@@ -1,5 +1,5 @@
 ﻿'use client';
-// 회원-캐릭터 권한 편집 (3차, v1.9) — 상대 캐릭터에 회원별 권한 부여:
+// 회원-캐릭터 권한 편집 (3차, v1.9) — 관리자 포함 회원별 권한 부여:
 // 역극 플레이(그 캐릭터로 발화 가능) / 편집까지(캐릭터 편집 포함).
 // v1.9 개편: 회원 전체 나열 대신 닉네임·아이디 검색으로 추가하고, 권한이 있는 회원만 목록에 표시.
 import React, { useEffect, useRef, useState } from 'react';
@@ -16,7 +16,7 @@ export function GrantsEditor({ value, onChange }: {
   value: CharGrant[];
   onChange: (next: CharGrant[]) => void;
 }) {
-  const pool = useMembers().filter(p => p.id !== 'admin'); // 관리자는 항상 전권
+  const pool = useMembers(); // 관리자도 실제로 권한을 부여해야 캐릭터로 발화할 수 있다
   const del = useConfirmDelete();   // 권한 해제도 되돌릴 수 없는 동작이라 경고를 거친다
   const [q, setQ] = useState('');
   // 드롭다운은 body 포털(fixed) — 카드 overflow에 잘리지 않고, 아래 공간이 없으면 위로 (v1.9 수정)
