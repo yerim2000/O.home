@@ -10,6 +10,10 @@ export interface RpMessage {
   charOwn?: boolean;                // 발화 당시 내 캐릭터(자캐)였는지 — 삭제된 캐릭터 재연동 시 리스트 판별용
   authorId: string;                 // 작성 회원 (수정/삭제 권한)
   text: string;
+  /** 이미지 메시지 첨부 파일의 저장소 참조 (Firebase/Supabase: URL, 로컬: IndexedDB id) */
+  imageRef?: string;
+  /** 원본 파일명 — 대체 텍스트·다운로드 표시용 */
+  imageName?: string;
   date: string;                     // ISO
 }
 
