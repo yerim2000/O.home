@@ -411,18 +411,16 @@ ${rows}
                   }
                   const ch = rpChars.find(c => c.id === m.charId);
                   const name = ch?.name ?? '';
-                  // 영역은 「보는 사람」 기준 (v2.0 사용자 확정): 내가 권한을 가진 캐릭터가 오른쪽,
-                  // 아닌 캐릭터가 왼쪽. 관리자에게는 자캐(own)가 자기 캐릭터다.
-                  // 그래서 같은 방이라도 사람마다 좌우가 반대로 보인다(각자 자기 쪽이 오른쪽).
-                  // 삭제된 캐릭터는 발화 당시 기록(charOwn)으로 판단.
-                  const rightSide = mine;
+                  // 정렬은 캐릭터 소유/권한과 무관하며, 로그인 계정과 메시지 작성자 UID로만 정한다.
+                  // 다른 회원이 내 자캐를 발화했더라도 왼쪽, 내가 상대 캐릭터를 발화했더라도 오른쪽.
+                  const rightSide = m.authorId === user.id;
 
-return (
-  <div
-    key={m.id}
-    className={`msg ${rightSide ? 'me' : ''}`}
-    style={{ ['--cc' as string]: hexRgb(ch?.color) }}
-  >
+                  return (
+                    <div
+                      key={m.id}
+                      className={`msg ${rightSide ? 'me' : 'other'}`}
+                      style={{ ['--cc' as string]: hexRgb(ch?.color) }}
+                    >
     <Face ch={ch} className="face" />
     <div>
                         <div className="who">{name}</div>
