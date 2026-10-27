@@ -2621,3 +2621,588 @@ body.edit-on .main-grid.gridlines .wgt{outline-offset:0}
   opacity: .48;
   cursor: not-allowed;
 }
+
+
+/* ──────────────────────────────────────────────────────────────────
+   DAKIN MOBILE · late-1990s candybar phone (DM v6)
+   Existing Firebase rooms, contacts, search, rename and delete stay intact.
+   All parts are CSS; no downloaded font/image/hardware asset required.
+   ────────────────────────────────────────────────────────────────── */
+.dm-phone-button.dm-retro-launcher {
+  left: 24px;
+  bottom: 21px;
+  width: 51px;
+  height: 82px;
+  padding: 0;
+  border: 2px solid #636975;
+  border-radius: 19px 19px 14px 14px / 23px 23px 15px 15px;
+  background: linear-gradient(116deg, #777e89 -8%, #222630 17%, #343946 55%, #11151c 100%);
+  box-shadow: 0 9px 22px #0008, inset 2px 1px 2px #cbd1d17d, inset -2px -4px 6px #090b10;
+  display: block;
+  transform: none;
+  transition: transform .14s ease, filter .14s ease;
+}
+.dm-phone-button.dm-retro-launcher:hover {
+  transform: translateY(-3px) rotate(-3deg);
+  border-color: #b2b8c0;
+  filter: brightness(1.08);
+}
+.dm-phone-button.dm-retro-launcher .dm-launcher-speaker {
+  position: absolute;
+  width: 13px;
+  height: 3px;
+  left: calc(50% - 6.5px);
+  top: 6px;
+  border-radius: 10px;
+  background: #11151b;
+  box-shadow: 0 1px #abb3b75c;
+}
+.dm-phone-button.dm-retro-launcher .dm-launcher-screen {
+  position: absolute;
+  left: 7px;
+  top: 14px;
+  width: 33px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #abb2b8;
+  border-radius: 8px 8px 5px 5px;
+  background: linear-gradient(135deg,#d0e0b0,#9db989);
+  box-shadow: inset 0 0 6px #46613f6b, 0 0 0 1px #151920;
+  color: #24392a;
+  font-size: 17px;
+  box-sizing: border-box;
+}
+.dm-phone-button.dm-retro-launcher .dm-launcher-nav {
+  position: absolute;
+  top: 47px;
+  left: 12px;
+  width: 23px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid #c5cbd0;
+  background: linear-gradient(#bfc4c8,#6f7883);
+}
+.dm-phone-button.dm-retro-launcher .dm-launcher-keys {
+  position: absolute;
+  left: 11px;
+  bottom: 6px;
+  width: 24px;
+  height: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 2px 3px;
+}
+.dm-phone-button.dm-retro-launcher .dm-launcher-keys i {
+  display: block;
+  border-radius: 70%;
+  background: linear-gradient(#e2e3e1,#848991);
+  border: 1px solid #505661;
+}
+.dm-phone-button.dm-retro-launcher .dm-unread-badge {
+  top: -7px;
+  right: -10px;
+  border-color: #242832;
+  background: #d4e8ac;
+  color: #223524;
+}
+
+.dm-phone-panel.dm-retro-phone {
+  position: fixed;
+  box-sizing: border-box;
+  right: 18px;
+  bottom: 12px;
+  left: auto;
+  top: auto;
+  z-index: 9999;
+  width: min(390px, calc(100vw - 20px));
+  height: min(820px, calc(100dvh - 24px));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 13px 14px 15px;
+  border: 3px solid #1b1e26;
+  border-radius: 59px 59px 46px 46px / 53px 53px 40px 40px;
+  background:
+    linear-gradient(110deg,
+      #0c1017 0%, #303640 5%, #717987 8%,
+      #272c36 12%, #393f4b 79%, #777e88 90%, #151922 100%);
+  color: #253927;
+  box-shadow:
+    0 28px 65px #000a,
+    3px 5px 8px #0009,
+    inset 3px 3px 3px #d6dad24d,
+    inset -5px -7px 11px #03060b94;
+}
+.dm-retro-phone .dm-retro-top {
+  position: relative;
+  flex: none;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 2px;
+  gap: 7px;
+}
+.dm-retro-phone .dm-retro-speaker {
+  display: flex;
+  gap: 5px;
+  transform: rotate(-9deg);
+  height: 12px;
+  align-items: center;
+}
+.dm-retro-phone .dm-retro-speaker i {
+  width: 4px;
+  height: 10px;
+  border-radius: 20px;
+  background: #080b10;
+  box-shadow: 1px 1px 1px #b2bdc378;
+}
+.dm-retro-phone .dm-retro-brand {
+  display: block;
+  color: #dedfdb;
+  font: 900 12px/1 system-ui, sans-serif;
+  letter-spacing: .17em;
+  text-shadow: 1px 1px #0a1019, -1px -1px #a7aeb17a;
+}
+.dm-retro-phone .dm-retro-bezel {
+  flex: 1;
+  min-height: 0;
+  padding: 6px;
+  border-radius: 20px 20px 29px 29px;
+  border: 3px solid #aeb6ba;
+  background: linear-gradient(140deg,#6e7780,#c5c9c7 40%,#4b5560 77%,#8c9295);
+  box-shadow: 0 3px 1px #080b10, inset 0 2px 2px #edf0eb6b;
+  display: flex;
+  flex-direction: column;
+}
+.dm-retro-phone .dm-retro-status {
+  height: 21px;
+  flex: none;
+  padding: 2px 9px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 13px 13px 0 0;
+  background: #c3d9aa;
+  color: #29412a;
+  font: 700 9px/1.1 ui-monospace, Consolas, monospace;
+  letter-spacing: .16em;
+  box-shadow: inset 0 5px 6px #4b68492a;
+}
+.dm-retro-phone .dm-retro-display {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #617b60;
+  border-top: 0;
+  border-radius: 0 0 17px 17px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, #3a603006 2px 3px),
+    linear-gradient(140deg, #c4dcae 0%, #b2cf9d 60%, #a1bf89 100%);
+  color: #253b2c;
+  box-shadow: inset 0 0 22px #425e3b36, inset 0 3px 9px #23372223;
+}
+.dm-retro-phone .dm-retro-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 2px 20px;
+}
+.dm-retro-phone .dm-retro-softkey {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 29px;
+  border: 1px solid #555e6c;
+  border-radius: 45% 35% 48% 40%;
+  background: linear-gradient(#cdd3d5, #7b8590);
+  color: #28313a;
+  box-shadow: inset 0 2px #f0f2ef99, 0 3px 3px #0008;
+  font: 650 17px/1 monospace;
+  transform: rotate(-8deg);
+}
+.dm-retro-phone .dm-retro-softkey:last-child { transform: rotate(8deg); }
+.dm-retro-phone .dm-retro-centerkey {
+  width: 104px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #7d8792;
+  border-radius: 50%;
+  background: linear-gradient(#dbe0df,#858d98);
+  box-shadow: 0 3px 3px #0008, inset 0 1px #fff8;
+}
+.dm-retro-phone .dm-retro-centerkey i {
+  width: 39px;
+  height: 4px;
+  border-radius: 20px;
+  background: #6691a0;
+  box-shadow: inset 0 1px #d7f3e0;
+}
+.dm-retro-phone .dm-retro-keypad {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 27px);
+  gap: 8px 20px;
+  margin: 0;
+  padding: 6px 29px 1px;
+}
+.dm-retro-phone .dm-retro-keypad span {
+  min-width: 0;
+  height: 27px;
+  border-radius: 48% 48% 50% 50%;
+  background: linear-gradient(#dce0e1 5%,#bec4c8 36%,#747d87 100%);
+  border: 1px solid #59616c;
+  color: #202831;
+  font: 700 11px/1 system-ui, sans-serif;
+  letter-spacing: -.04em;
+  box-shadow: 0 3px 4px #0008, inset 0 1px #fff, inset 0 -2px 2px #303a4657;
+}
+
+/* The old messaging workflow now lives inside the green backlit LCD. */
+.dm-retro-phone .dm-phone-header {
+  flex: none;
+  min-height: 50px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #64815c;
+  background: #aec89b61;
+  color: #263b2a;
+}
+.dm-retro-phone .dm-heading { gap: 3px; }
+.dm-retro-phone .dm-heading small {
+  color: #4c674d;
+  font: 600 9px/1.3 ui-monospace, Consolas, monospace;
+  letter-spacing: .08em;
+}
+.dm-retro-phone .dm-heading strong {
+  color: #253c2a;
+  font-size: 14px;
+  letter-spacing: .08em;
+}
+.dm-retro-phone .dm-chat-header .dm-heading strong { color: #263c2a; }
+.dm-retro-phone .dm-chat-header .dm-heading small { color: #506b50; }
+.dm-retro-phone .dm-close,
+.dm-retro-phone .dm-back {
+  border: 1px solid #6e8868;
+  color: #294029;
+  background: #c2d9ab;
+  box-shadow: inset 0 1px #f0f7df7c;
+}
+.dm-retro-phone .dm-back {
+  width: 29px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.dm-retro-phone .dm-directory-top {
+  flex: none;
+  padding: 11px 12px 10px;
+  border-bottom: 1px solid #73906b;
+  background: #c1d7aa4f;
+  gap: 7px;
+}
+.dm-retro-phone .dm-directory-intro span,
+.dm-retro-phone .dm-directory-intro small,
+.dm-retro-phone .dm-directory-section h3 {
+  color: #36563b;
+}
+.dm-retro-phone .dm-directory-section h3 span { color: #5c7558; }
+.dm-retro-phone .dm-search,
+.dm-retro-phone .dm-manage-input {
+  height: 34px;
+  border-radius: 5px;
+  border: 1px solid #789371;
+  background: #e0ebc7b3;
+  color: #27402c;
+  font-size: 12px;
+}
+.dm-retro-phone .dm-search::placeholder { color: #6e8465; }
+.dm-retro-phone .dm-search:focus,
+.dm-retro-phone .dm-manage-input:focus {
+  border-color: #3b6748;
+}
+.dm-retro-phone .dm-directory-list,
+.dm-retro-phone .dm-messages {
+  min-height: 0;
+  background: transparent;
+  scrollbar-color: #6b8966 transparent;
+}
+.dm-retro-phone .dm-directory-section { padding: 7px 0 10px; }
+.dm-retro-phone .dm-directory-section + .dm-directory-section {
+  border-color: #7b94703f;
+}
+.dm-retro-phone .dm-directory-section h3 { padding: 6px 12px; }
+.dm-retro-phone .dm-contact {
+  border-color: #657c6054;
+  color: #203729;
+  padding: 10px 12px;
+  gap: 10px;
+}
+.dm-retro-phone .dm-room-row { border-color: #657c6054; }
+.dm-retro-phone .dm-room-row > .dm-contact { padding-right: 2px; }
+.dm-retro-phone .dm-room-row:hover,
+.dm-retro-phone .dm-contact:hover,
+.dm-retro-phone .dm-contact:focus-visible {
+  background: #577a4a21;
+}
+.dm-retro-phone .dm-contact-copy strong { color: #203827; }
+.dm-retro-phone .dm-contact-copy small,
+.dm-retro-phone .dm-contact-end time,
+.dm-retro-phone .dm-contact-chevron { color: #537352; }
+.dm-retro-phone .dm-room-more {
+  color: #35533c;
+}
+.dm-retro-phone .dm-room-more:hover { color: #20392b; background: #70885b43; }
+.dm-retro-phone .dm-portrait {
+  border-color: #597653;
+  color: #e2efd2;
+  background: linear-gradient(140deg,var(--dm-color),#4e7050);
+}
+.dm-retro-phone .dm-portrait > span { color: #ecf8df; }
+.dm-retro-phone .dm-contact-end i,
+.dm-retro-phone .dm-bottom-tabs i {
+  color: #d7e4c2;
+  background: #2c5137;
+}
+.dm-retro-phone .dm-bottom-tabs {
+  min-height: 52px;
+  padding: 2px 12px 4px;
+  background: #a9c5988c;
+  border-color: #6e8a64;
+}
+.dm-retro-phone .dm-bottom-tabs button { color: #557152; }
+.dm-retro-phone .dm-bottom-tabs button.active {
+  color: #25442d;
+  background: #5b784d2d;
+}
+.dm-retro-phone .dm-bottom-tabs button:hover { background: #577a4a33; }
+.dm-retro-phone .dm-empty,
+.dm-retro-phone .dm-empty small,
+.dm-retro-phone .dm-inline-note { color: #4b6746; }
+.dm-retro-phone .dm-inline-error { color: #823e38; }
+.dm-retro-phone .dm-messages {
+  padding: 13px 10px;
+  gap: 9px;
+}
+.dm-retro-phone .dm-message {
+  border-color: #74916e;
+  color: #253b2a;
+  max-width: 91%;
+  border-radius: 12px;
+  background: #d8e8bf;
+  box-shadow: 0 1px #fff5 inset;
+  padding: 8px 10px;
+}
+.dm-retro-phone .dm-message.dm-mine {
+  align-self: flex-end;
+  border-color: #63835b;
+  border-bottom-right-radius: 4px;
+  background: #91b284;
+}
+.dm-retro-phone .dm-message.dm-theirs {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  background: #d7e7bc;
+}
+.dm-retro-phone .dm-message > small { color: #3c633f; }
+.dm-retro-phone .dm-message > small time { color: #537052; }
+.dm-retro-phone .dm-text-content { white-space: pre-wrap; }
+.dm-retro-phone .dm-compose {
+  flex: none;
+  background: #abc69a7d;
+  border-color: #77916a;
+  padding: 9px 10px 10px;
+}
+.dm-retro-phone .dm-sender-select > span { color: #446b42; }
+.dm-retro-phone .dm-sender-select select {
+  border-color: #779370;
+  background: #dce8c5;
+  color: #2d422e;
+}
+.dm-retro-phone .dm-compose-row input {
+  height: 38px;
+  border-color: #789575;
+  border-radius: 5px;
+  background: #e2ecccb8;
+  color: #29432c;
+}
+.dm-retro-phone .dm-compose-row input::placeholder { color: #688365; }
+.dm-retro-phone .dm-compose-row button {
+  height: 38px;
+  padding: 0 9px;
+  border-color: #4d754d;
+  border-radius: 5px;
+  background: #53764c;
+  color: #ebf6dd;
+}
+.dm-retro-phone .dm-archive-note {
+  background: #aec6998f;
+  color: #496b4b;
+  border-color: #75916a;
+}
+.dm-retro-phone .dm-manage-overlay {
+  background: #183222ad;
+  padding: 10px;
+}
+.dm-retro-phone .dm-manage-sheet {
+  background: #c0d6aa;
+  border-color: #78946c;
+  color: #29412d;
+  box-shadow: 0 10px 25px #1d302e88;
+}
+.dm-retro-phone .dm-manage-heading > strong { color: #253b29; }
+.dm-retro-phone .dm-manage-heading > small { color: #537450; }
+.dm-retro-phone .dm-manage-hint { color: #4f6c50; }
+.dm-retro-phone .dm-manage-option,
+.dm-retro-phone .dm-manage-buttons button {
+  background: #deebc5;
+  border-color: #78946b;
+  color: #29402b;
+}
+.dm-retro-phone .dm-manage-option:hover { background: #eef5d9; }
+.dm-retro-phone .dm-manage-cancel { color: #49654b; }
+.dm-retro-phone .dm-manage-input { background: #e6eecf; }
+
+/* A fake voice message is just a saved string, never an audio recording. */
+.dm-message-voice { width: min(270px, 88%); }
+.dm-retro-phone .dm-message-voice { padding: 8px; }
+.dm-phone-panel .dm-voice-trigger {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  align-items: center;
+}
+.dm-voice-play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #426844;
+  color: #e3efd0;
+  font-size: 13px;
+}
+.dm-voice-label { display: grid; gap: 5px; min-width: 0; flex: 1; }
+.dm-voice-label strong { font-size: 10.5px; color: inherit; font-weight: 750; }
+.dm-voice-label small { color: #536c51; font-size: 9px; }
+.dm-voice-arrow { font-size: 18px; color: #54704c; }
+.dm-voice-reader {
+  border-top: 1px dashed #6786627d;
+  margin-top: 7px;
+  padding-top: 9px;
+}
+.dm-voice-marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  height: 31px;
+  border: 2px solid #4b6a49;
+  border-radius: 4px;
+  background: #29432c;
+  color: #d0efb0;
+  box-shadow: inset 0 1px 7px #09180c94;
+}
+.dm-voice-moving-text {
+  position: absolute;
+  top: 7px;
+  left: 100%;
+  display: inline-block;
+  max-width: none;
+  white-space: nowrap;
+  font: 650 12px/1.3 ui-monospace, Consolas, monospace;
+  letter-spacing: .03em;
+  animation: dm-voice-marquee 12s linear 1 forwards;
+}
+@keyframes dm-voice-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% - 260px)); }
+}
+.dm-voice-progress {
+  height: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #62835b70;
+}
+.dm-voice-progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #3e6341;
+  animation: dm-voice-progress 12s linear 1 forwards;
+}
+@keyframes dm-voice-progress { to { width: 100%; } }
+.dm-voice-reader-caption {
+  display: block;
+  margin-top: 4px;
+  text-align: right;
+  font: 8px/1.3 ui-monospace, Consolas, monospace;
+  letter-spacing: .05em;
+  color: #51744c;
+}
+.dm-retro-phone .dm-compose-switch {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.dm-retro-phone .dm-compose-switch button {
+  height: 27px;
+  flex: 0 0 auto;
+  padding: 0 11px;
+  border: 1px solid #74916c;
+  border-radius: 20px;
+  background: transparent;
+  color: #557051;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.dm-retro-phone .dm-compose-switch button.active {
+  background: #55734e;
+  border-color: #426941;
+  color: #eff6e7;
+}
+/* The widget stays usable on smaller laptop and mobile viewports. */
+@media (max-height: 760px) {
+  .dm-phone-panel.dm-retro-phone { padding: 8px 11px 10px; border-radius: 44px 44px 30px 30px; }
+  .dm-retro-phone .dm-retro-top { min-height: 30px; gap: 4px; }
+  .dm-retro-phone .dm-retro-keypad { grid-template-rows: repeat(4, 20px); gap: 5px 15px; padding: 4px 30px 0; }
+  .dm-retro-phone .dm-retro-keypad span { height: 20px; font-size: 10px; }
+  .dm-retro-phone .dm-retro-controls { height: 34px; padding: 0 20px; }
+}
+@media (max-width: 480px) {
+  .dm-phone-panel.dm-retro-phone {
+    left: auto;
+    right: 6px;
+    bottom: 6px;
+    width: min(390px, calc(100vw - 12px));
+    height: min(820px, calc(100dvh - 12px));
+  }
+  .dm-retro-phone .dm-retro-keypad { padding-left: 25px; padding-right: 25px; }
+  .dm-phone-button.dm-retro-launcher { left: 15px; bottom: 16px; }
+  .dm-arrival-toast { left: 80px; width: calc(100vw - 90px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dm-voice-moving-text,
+  .dm-voice-progress > span { animation-duration: 1ms !important; }
+  .dm-voice-marquee { overflow-x: auto; }
+  .dm-voice-moving-text { position: static; transform: none; }
+}
