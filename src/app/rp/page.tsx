@@ -65,8 +65,8 @@ export default function RpPage() {
   const cntS = (s: 'all' | 'ongoing' | 'done') =>
     allMine.filter(r => s === 'all' || r.status === s).length;
 
-  // 발화자 선택 — 관리자는 기반 자관 멤버 전부(+자유 개설이면 자캐 전부),
-  // 회원은 권한(grants — 역극 플레이/편집)이 부여된 캐릭터만 (3차 회원-캐릭터 연결, v1.9)
+  // 발화자 선택 — 관리자라도 캐릭터에 명시적으로 권한(grants: play/edit)이 있어야 한다.
+  // 이 규칙은 일반 회원과 동일하며, 자관 기반/자유 개설에 모두 적용한다.
   const rel = rels.find(r => r.id === sel?.relId);
   /* 이 방이 어느 AU로 노는지 (v2.0 사용자 요청) — 방 안에서 쓰는 캐릭터를 통째로
      그 AU 프로필로 갈아 끼운다. 발화자 선택·말풍선·방 소제목이 모두 이 목록을 보므로
@@ -83,10 +83,10 @@ export default function RpPage() {
   const speakChars = useMemo(() => {
     if (rel) {
       const members = rel.members.map(m => rpChars.find(c => c.id === m.charId)).filter(Boolean) as Character[];
-      return isAdmin ? members : members.filter(c => !!charGrant(c, user?.id));
+      return members.filter(c => !!charGrant(c, user?.id));
     }
-    return isAdmin ? rpChars.filter(c => c.own) : rpChars.filter(c => !!charGrant(c, user?.id));
-  }, [rel, rpChars, isAdmin, user?.id]);
+    return rpChars.filter(c => !!charGrant(c, user?.id));
+  }, [rel, rpChars, user?.id]);
 
   const [speaker, setSpeaker] = useState<string>('');   // charId | 'desc' (플레이어 발화는 없앴다, v2.0)
   const [pickOpen, setPickOpen] = useState(false);
