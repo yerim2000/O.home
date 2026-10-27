@@ -18,11 +18,13 @@ import { CroppedBlobImg } from '@/components/ui/CropEditor';
 import { EditableDesc, PageTitle } from '@/components/ui/PageText';
 import { useToast } from '@/components/ui/Toast';
 
-/** 캐릭터 얼굴 칩 (썸네일 or 데모 플레이스홀더) */
+/** 정사각형 역극 프로필 사진은 캐릭터의 전용 1:1 프사 크롭을 사용한다.
+ *  없던 캐릭터는 기존 3:4 썸네일 설정으로 표시해 이전 기록과 호환된다. */
 function Face({ ch, className }: { ch?: Character; className: string }) {
+  const photo = ch?.thumbId ?? ch?.arts?.[0];
   return (
-    <div className={`${className} ${!ch?.thumbId ? `ph ${ch?.thumbClass ?? ''}` : ''}`}>
-      {ch?.thumbId && <CroppedBlobImg fileRef={ch.thumbId} crop={ch.thumbCrop} />}
+    <div className={`${className} ${!photo ? `ph ${ch?.thumbClass ?? ''}` : ''}`}>
+      {photo && <CroppedBlobImg fileRef={photo} crop={ch?.avatarCrop ?? ch?.thumbCrop} />}
     </div>
   );
 }
