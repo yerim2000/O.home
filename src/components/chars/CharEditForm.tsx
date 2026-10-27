@@ -69,6 +69,9 @@ export function CharEditForm({ initial, onSave, onCancel, auMode, existingIds }:
     return refs.map(r => ({ id: newId(), ref: r }));
   });
   const [thumbCrop, setThumbCrop] = useState<CropValue | undefined>(initial?.thumbCrop);
+  // 작은 1:1 프사는 3:4 썸네일과 프레임 비율이 달라 별도 위치를 저장한다.
+  const [avatarCrop, setAvatarCrop] = useState<CropValue | undefined>(initial?.avatarCrop);
+  const [avatarCropOpen, setAvatarCropOpen] = useState(false);
   const [grants, setGrants] = useState<CharGrant[]>(initial?.grants ?? []); // 상대 캐릭터 회원 권한 (v1.9)
   const [cropOpen, setCropOpen] = useState(false);
   const [lb, setLb] = useState<number | null>(null);   // 아트 썸네일 클릭 → 원본 보기
@@ -79,7 +82,7 @@ export function CharEditForm({ initial, onSave, onCancel, auMode, existingIds }:
     if (!list || list.length === 0) return;
     const items = Array.from(list).map(f => ({ id: newId(), url: URL.createObjectURL(f), file: f }));
     setArts(prev => {
-      if (prev.length === 0) { setThumbCrop(undefined); setCropOpen(true); } // 첫 장 → 썸네일 크롭 (6.1)
+      if (prev.length === 0) { setThumbCrop(undefined); setAvatarCrop(undefined); setCropOpen(true); } // 첫 장 → 썸네일 크롭 (6.1)
       return [...prev, ...items];
     });
   };
@@ -116,6 +119,7 @@ export function CharEditForm({ initial, onSave, onCancel, auMode, existingIds }:
       arts: artIds,
       thumbId: artIds[0],       // 썸네일 = 첫 아트 + 크롭
       thumbCrop,
+      avatarCrop,                 // 역극·저널·메신저 얼굴 사진 = 첫 아트 + 1:1 별도 크롭
       artId: artIds[0],
       own: initial?.own ?? true,
       grants: grants.length ? grants : undefined,
@@ -155,7 +159,7 @@ export function CharEditForm({ initial, onSave, onCancel, auMode, existingIds }:
       <div className="panel" style={{ padding: 24, display: 'grid', gap: 12, alignContent: 'start' }}>
         {/* 아트 목록 */}
         <label className="k-label" style={{ margin: 0 }}>
-          아트 <span style={{ fontWeight: 400, color: 'var(--faint)' }}>— 첫 장이 대표 풀 아트 · 리스트 썸네일은 첫 장에서 3:4 크롭 · ⠿ 순서 변경</span>
+          아트 <span style={{ fontWeight: 400, color: 'var(--faint)' }}>— 첫 장이 대표 아트 · 목록용 3:4 썸네일과 저널·역극용 1:1 프사는 각각 위치를 지정할 수 있습니다 · ⠿ 순서 변경</span>
         </label>
         {arts.length > 0 && (
           <DragList items={arts} keyOf={a => a.id} onReorder={setArts}
@@ -171,8 +175,18 @@ export function CharEditForm({ initial, onSave, onCancel, auMode, existingIds }:
                     <span className="pill dark">대표 · 썸네일</span>
                     {/* 옆의 「대표 · 썸네일」 뱃지와 세로 크기 통일 (23px).
                         상세 화면에 보일 위치는 상세에서 우클릭으로 잡는다 (v2.0) */}
-                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5, lineHeight: '13px' }}
-                      onClick={() => setCropOpen(true)}>✂ 썸네일 크롭</button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5, lineHeight: '13px' }}
+                        onClick={() => setCropOpen(true)}>✂ 목록 썸네일 3:4</button>
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 10.5, lineHeight: '13px' }}
+                        onClick={() => setAvatarCropOpen(true)}>◯ 프사 위치 1:1</button>
+                      <div title="저널·역극 프사 미리보기 (1:1)" style={{
+                        position: 'relative', width: 34, height: 34, flexShrink: 0, overflow: 'hidden',
+                        border: '1px solid var(--line)', borderRadius: '50%',
+                      }}>
+                        <ArtThumb item={a} crop={avatarCrop ?? thumbCrop} />
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <span className="pill">추가 아트</span>
@@ -354,11 +368,17 @@ export function CharEditForm({ initial, onSave, onCancel, auMode, existingIds }:
         </div>
       </div>
 
-      {/* 썸네일 크롭 (3:4 — 첫 아트 기준, 6.1) */}
+      {/* 목록 썸네일은 세로 3:4, 저널·역극·메신저의 프사는 정사각 1:1.
+          이미지 원본은 하나지만 화면 비율별로 서로 다른 위치·확대를 저장한다. */}
       {arts[0] && (
-        <FirstArtCrop open={cropOpen} item={arts[0]} crop={thumbCrop}
-          onClose={() => setCropOpen(false)}
-          onApply={c => { setThumbCrop(c); setCropOpen(false); }} />
+        <>
+          <FirstArtCrop open={cropOpen} item={arts[0]} crop={thumbCrop} aspect="3:4"
+            onClose={() => setCropOpen(false)}
+            onApply={c => { setThumbCrop(c); setCropOpen(false); }} />
+          <FirstArtCrop open={avatarCropOpen} item={arts[0]} crop={avatarCrop ?? thumbCrop} aspect="1:1"
+            onClose={() => setAvatarCropOpen(false)}
+            onApply={c => { setAvatarCrop(c); setAvatarCropOpen(false); }} />
+        </>
       )}
       {/* 아트 원본 보기 — 아직 저장 전 파일은 url, 저장된 것은 ref (Lightbox가 둘 다 처리) */}
       {lb !== null && (
@@ -402,9 +422,9 @@ function TabEditView({ tab, onChange, onDelete, onBack }: {
   );
 }
 
-/** 첫 아트(새 파일 또는 저장된 blob)를 소스로 3:4 크롭 편집기 표시 */
-function FirstArtCrop({ open, item, crop, onClose, onApply }: {
-  open: boolean; item: ArtItem; crop?: CropValue;
+/** 첫 아트(새 파일 또는 저장된 blob)의 3:4 썸네일/1:1 프사 크롭 편집기를 공용 사용 */
+function FirstArtCrop({ open, item, crop, aspect, onClose, onApply }: {
+  open: boolean; item: ArtItem; crop?: CropValue; aspect: '3:4' | '1:1';
   onClose: () => void; onApply: (c: CropValue) => void;
 }) {
   const [loadedUrl, setLoadedUrl] = useState('');
@@ -414,6 +434,6 @@ function FirstArtCrop({ open, item, crop, onClose, onApply }: {
   }, [item, open]);
   const src = item.url || loadedUrl;
   if (!src || !open) return null;
-  return <CropEditor open={open} src={src} aspect="3:4" initial={crop} onClose={onClose} onApply={onApply} />;
+  return <CropEditor open={open} src={src} aspect={aspect} initial={crop} onClose={onClose} onApply={onApply} />;
 }
 
