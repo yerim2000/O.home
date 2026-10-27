@@ -112,6 +112,9 @@ export const COLLECTION_OF: Record<string, string> = {
   'ohome.comm.v1': 'commissions',
   'ohome.commapply.v1': 'applicants',
   'ohome.moods.v1': 'moods',
+  // 개인 메시지 — Firebase에서는 대화 참여자만 접근 가능
+  'ohome.dm.rooms.v1': 'dm_rooms',
+  'ohome.dm.messages.v1': 'dm_messages',
   // 댓글 — 글 안이 아니라 자기 문서로 (v2.0). 글 안에 두면 댓글을 달 때마다 글을 UPDATE 해야 해서
   // 「글 수정은 작성자·관리자만」 규칙에 걸려 일반 회원이 관리자 글에 댓글을 달 수 없었다
   'ohome.comments.v1': 'comments',
