@@ -68,6 +68,9 @@ export interface Backend {
    *  「글에도 적용」을 누르면 돈다. 내용(data)·순서(sort)는 건드리지 않는다. */
   refreshVis<T extends ListItem>(coll: string, items: T[], uid: string | null): Promise<number>;
   subscribe(coll: string, onChange: () => void): () => void;
+  /** DM 대화방 이름·채팅 목록 삭제는 본인에게만 적용된다.
+   *  Firebase의 방 문서 안에 회원별 필드를 따로 쓰므로 상대방의 제목/기록은 그대로 유지한다. */
+  updateDmRoomPersonal?(roomId: string, action: 'rename' | 'delete', title?: string): Promise<void>;
 
   /* ---- 설정(key/value) ---- */
   fetchSetting<T>(key: string): Promise<T | null>;
