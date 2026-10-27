@@ -30,6 +30,15 @@ type DMMessage = {
   text: string;
   date: string;
 };
+type ChatEntry = {
+  room: DMRoom;
+  contact: Contact;
+  myCharacterName: string;
+  last?: DMMessage;
+  unread: number;
+  sortDate: string;
+};
+
 type Contact = {
   key: string;
   targetId: string;
@@ -86,12 +95,15 @@ export function PhoneDM() {
   const { user } = useAuth();
   const toast = useToast();
   const [open, setOpen] = useState(false);
-  const [screen, setScreen] = useState<"contacts" | "chat">("contacts");
+  const [screen, setScreen] = useState<"contacts" | "chats" | "chat">("chats");
+  const [backScreen, setBackScreen] = useState<"contacts" | "chats">("chats");
   const [queryText, setQueryText] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [memberError, setMemberError] = useState("");
   const [dmError, setDmError] = useState("");
   const [activeKey, setActiveKey] = useState("");
+  const [historicContact, setHistoricContact] = useState<Contact | null>(null);
+  const [activeRoomOverride, setActiveRoomOverride] = useState("");
   const [senderCharacterId, setSenderCharacterId] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -128,8 +140,10 @@ export function PhoneDM() {
     setRooms([]);
     setMessages([]);
     setArrival(null);
-    setScreen("contacts");
+    setScreen("chats");
     setActiveKey("");
+    setHistoricContact(null);
+    setActiveRoomOverride("");
     if (!user) { setSeen({}); return; }
     try { setSeen(JSON.parse(localStorage.getItem(seenKey(user.id)) || "{}")); }
     catch { setSeen({}); }
@@ -183,55 +197,30 @@ export function PhoneDM() {
 
   const ownCharacters = useMemo(() => {
     if (!user) return [];
-    return chars.filter((c) => (user.role === "admin" && c.own) || !!charGrant(c, user.id));
+    // 관리자도 own 플래그만으로 발화할 수 없으며, 모든 회원은 명시적 grants가 필요하다.
+    return chars.filter((c) => !!charGrant(c, user.id));
   }, [chars, user]);
 
+  // 연락처 목록: 캐릭터의 '회원 권한'에 직접 등록된 계정만 수신자로 표시한다.
+  // own 플래그 및 관리자 역할은 자동 캐릭터 사용 권한이 아니다.
   const contacts = useMemo(() => {
     if (!user) return [] as Contact[];
+    const validMembers = new Set(members.map((m) => m.id));
     const map = new Map<string, Contact>();
-    const memberIds = new Set(members.map((m) => m.id));
-    const admins = members.filter((m) => m.role === "admin").map((m) => m.id);
-    const add = (targetId: string, characterId: string, name: string, color: string, character?: Character, active = true) => {
-      if (!targetId || targetId === user.id) return;
-      const key = targetId + "|" + characterId;
-      const old = map.get(key);
-      map.set(key, {
-        key, targetId, characterId, name, color, character,
-        active: active || !!old?.active,
-      });
-    };
-
-    // 전화번호부의 주인은 캐릭터에 부여된 플레이/편집 권한으로 결정.
-    // own 캐릭터는 관리자 계정이 주인이고, grants가 있는 경우 해당 회원도 플레이어다.
     for (const c of chars) {
-      const owners = new Set<string>([
-        ...(c.own ? admins : []),
-        ...(c.grants ?? []).map((g) => g.userId),
-      ]);
-      for (const uid of owners) {
-        if (memberIds.has(uid)) add(uid, c.id, c.name, c.color || "#9a9da3", c);
-      }
-    }
-
-    // 권한이 변경되거나 캐릭터가 삭제돼도 이미 주고받은 대화는 기록에 남긴다.
-    for (const room of rooms) {
-      if (!room.memberIds.includes(user.id)) continue;
-      const other = room.characters?.find((p) => p.userId !== user.id);
-      if (other) {
-        const c = chars.find((x) => x.id === other.characterId);
-        add(other.userId, other.characterId, c?.name ?? other.characterName, c?.color ?? "#92949b", c, false);
-      } else {
-        const uid = room.memberIds.find((id) => id !== user.id);
-        if (!uid) continue;
-        const key = "legacy:" + room.id;
+      for (const grant of c.grants ?? []) {
+        const uid = grant.userId;
+        if (!uid || uid === user.id || !validMembers.has(uid)) continue;
+        if (grant.level !== "play" && grant.level !== "edit") continue;
+        const key = uid + "|" + c.id;
         map.set(key, {
-          key, targetId: uid, characterId: "", name: "이전 대화",
-          color: "#858b95", active: false, legacyRoomId: room.id,
+          key, targetId: uid, characterId: c.id,
+          name: c.name, color: c.color || "#9a9da3", character: c, active: true,
         });
       }
     }
-    return [...map.values()];
-  }, [chars, members, rooms, user?.id]);
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }, [chars, members, user?.id]);
 
   const contactRooms = useCallback((contact: Contact) => rooms.filter((r) => {
     if (contact.legacyRoomId) return r.id === contact.legacyRoomId;
@@ -240,42 +229,67 @@ export function PhoneDM() {
     );
   }), [rooms, user?.id]);
 
-  const lastFor = useCallback((contact: Contact) => {
-    const ids = new Set(contactRooms(contact).map((r) => r.id));
-    return messages.filter((m) => ids.has(m.roomId)).sort((a, b) => b.date.localeCompare(a.date))[0];
-  }, [contactRooms, messages]);
+  // '채팅'은 실제 대화방마다 한 항목씩 표시한다.
+  // 회원 권한이 해제되어도 과거 대화는 읽을 수 있지만 새 발신은 막힌다.
+  const chatEntries = useMemo(() => {
+    if (!user) return [] as ChatEntry[];
+    const list: ChatEntry[] = [];
+    for (const room of rooms) {
+      if (!room.memberIds.includes(user.id)) continue;
+      const otherId = room.memberIds.find((uid) => uid !== user.id);
+      if (!otherId) continue;
+      const other = room.characters?.find((p) => p.userId === otherId);
+      const mine = room.characters?.find((p) => p.userId === user.id);
+      const otherChar = chars.find((c) => c.id === other?.characterId);
+      const key = other ? otherId + "|" + other.characterId : "legacy:" + room.id;
+      const allowTarget = !!otherChar && !!charGrant(otherChar, otherId);
+      const contact = contacts.find((c) => c.key === key) ?? {
+        key, targetId: otherId, characterId: other?.characterId ?? "",
+        name: otherChar?.name ?? other?.characterName ?? "이전 대화",
+        color: otherChar?.color ?? "#858b95", character: otherChar,
+        active: allowTarget,
+        legacyRoomId: other ? undefined : room.id,
+      };
+      const roomMsgs = messages.filter((m) => m.roomId === room.id)
+        .sort((a, b) => b.date.localeCompare(a.date));
+      const last = roomMsgs[0];
+      const myCharacter = chars.find((c) => c.id === mine?.characterId);
+      list.push({
+        room, contact, last,
+        myCharacterName: myCharacter?.name ?? mine?.characterName ?? "",
+        unread: roomMsgs.filter((m) =>
+          m.senderId !== user.id && m.date > (seen[room.id] ?? "")
+        ).length,
+        sortDate: last?.date ?? room.createdAt,
+      });
+    }
+    return list.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
+  }, [rooms, messages, chars, contacts, seen, user?.id]);
 
-  const contactLastDate = useCallback((contact: Contact) => {
-    const m = lastFor(contact);
-    return m?.date ?? contactRooms(contact)[0]?.createdAt ?? "";
-  }, [lastFor, contactRooms]);
-
-  const recentContacts = useMemo(() =>
-    contacts.filter((c) => contactRooms(c).length > 0)
-      .sort((a, b) => contactLastDate(b).localeCompare(contactLastDate(a))),
-  [contacts, contactRooms, contactLastDate]);
-
-  const otherContacts = useMemo(() => {
-    const recent = new Set(recentContacts.map((c) => c.key));
+  const searchedContacts = useMemo(() => {
     const q = queryText.trim().toLowerCase();
-    return contacts.filter((c) => !recent.has(c.key) && !c.legacyRoomId && c.active)
-      .filter((c) => !q || c.name.toLowerCase().includes(q))
-      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  }, [contacts, recentContacts, queryText]);
+    return contacts.filter((c) => !q || c.name.toLowerCase().includes(q));
+  }, [contacts, queryText]);
 
-  const filteredRecent = useMemo(() => {
+  const searchedChats = useMemo(() => {
     const q = queryText.trim().toLowerCase();
-    return recentContacts.filter((c) => !q || c.name.toLowerCase().includes(q));
-  }, [recentContacts, queryText]);
+    return chatEntries.filter((entry) =>
+      !q || entry.contact.name.toLowerCase().includes(q) ||
+      entry.myCharacterName.toLowerCase().includes(q) ||
+      (entry.last?.text ?? "").toLowerCase().includes(q)
+    );
+  }, [chatEntries, queryText]);
 
-  const activeContact = contacts.find((c) => c.key === activeKey) ?? null;
+  const activeContact = contacts.find((c) => c.key === activeKey) ??
+    (historicContact?.key === activeKey ? historicContact : null);
   const sender = ownCharacters.find((c) => c.id === senderCharacterId);
   const activeRoomId = useMemo(() => {
     if (!user || !activeContact) return "";
+    if (activeRoomOverride) return activeRoomOverride;
     if (activeContact.legacyRoomId) return activeContact.legacyRoomId;
     if (!sender) return "";
     return conversationId(user.id, sender.id, activeContact.targetId, activeContact.characterId);
-  }, [user?.id, activeContact?.key, sender?.id]);
+  }, [user?.id, activeContact?.key, sender?.id, activeRoomOverride]);
 
   const roomMessages = useMemo(() =>
     messages.filter((m) => m.roomId === activeRoomId).sort((a, b) => a.date.localeCompare(b.date)),
@@ -321,19 +335,49 @@ export function PhoneDM() {
     }
   }, [messages, dmLoaded, user?.id, open, screen, activeRoomId, toast]);
 
-  function chooseContact(c: Contact, preferredSenderId?: string) {
-    if (!c.legacyRoomId) {
-      const previous = contactRooms(c)
+  function chooseContact(
+    contact: Contact,
+    preferredSenderId?: string,
+    back: "contacts" | "chats" = "contacts",
+  ) {
+    if (!contact.legacyRoomId) {
+      const previous = contactRooms(contact)
         .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
-      const myPreviousCharacter = previous?.characters?.find((p) => p.userId === user?.id)?.characterId;
-      const selected =
-        ownCharacters.find((ch) => ch.id === preferredSenderId) ??
-        ownCharacters.find((ch) => ch.id === myPreviousCharacter) ??
-        ownCharacters.find((ch) => ch.id === senderCharacterId) ??
+      const oldCharId = previous?.characters?.find((p) => p.userId === user?.id)?.characterId;
+      const preferred =
+        ownCharacters.find((c) => c.id === preferredSenderId) ??
+        ownCharacters.find((c) => c.id === oldCharId) ??
+        ownCharacters.find((c) => c.id === senderCharacterId) ??
         ownCharacters[0];
-      setSenderCharacterId(selected?.id ?? "");
+      setSenderCharacterId(preferred?.id ?? "");
     }
-    setActiveKey(c.key);
+    setHistoricContact(null);
+    setActiveRoomOverride("");
+    setBackScreen(back);
+    setActiveKey(contact.key);
+    setMessage("");
+    setDmError("");
+    setScreen("chat");
+    setArrival(null);
+  }
+
+  function openChatEntry(entry: ChatEntry) {
+    const ownPart = entry.room.characters?.find((p) => p.userId === user?.id);
+    const canContinue = entry.contact.active &&
+      !!ownCharacters.find((c) => c.id === ownPart?.characterId) &&
+      !entry.contact.legacyRoomId;
+
+    if (canContinue) {
+      chooseContact(entry.contact, ownPart?.characterId, "chats");
+      return;
+    }
+
+    // 권한이 사라졌거나 예전 형식의 채팅방: 대화 기록만 보여 준다.
+    setHistoricContact(entry.contact);
+    setActiveRoomOverride(entry.room.id);
+    setSenderCharacterId(ownPart?.characterId ?? "");
+    setActiveKey(entry.contact.key);
+    setBackScreen("chats");
     setMessage("");
     setDmError("");
     setScreen("chat");
@@ -342,22 +386,21 @@ export function PhoneDM() {
 
   function openArrival() {
     if (!arrival || !user) return;
-    const room = rooms.find((r) => r.id === arrival.roomId);
-    const other = room?.characters?.find((p) => p.userId !== user.id);
-    const mine = room?.characters?.find((p) => p.userId === user.id);
-    const contact = other
-      ? contacts.find((c) => c.targetId === other.userId && c.characterId === other.characterId)
-      : contacts.find((c) => c.legacyRoomId === arrival.roomId);
+    const entry = chatEntries.find((e) => e.room.id === arrival.roomId);
     setOpen(true);
-    if (contact) chooseContact(contact, mine?.characterId);
-    else setScreen("contacts");
+    if (entry) openChatEntry(entry);
+    else setScreen("chats");
     setArrival(null);
   }
 
   async function sendMessage(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!user || !activeContact || !sender || !activeRoomId || !message.trim() || sending) return;
-    if (!activeContact.active || activeContact.legacyRoomId) {
+    if (
+      !activeContact.active || activeContact.legacyRoomId || activeRoomOverride ||
+      !charGrant(sender, user.id) ||
+      !activeContact.character || !charGrant(activeContact.character, activeContact.targetId)
+    ) {
       setDmError("이 연락처에서는 새 메시지를 보낼 수 없습니다.");
       return;
     }
@@ -421,7 +464,7 @@ export function PhoneDM() {
     <>
       <button
         className="dm-phone-button"
-        onClick={() => { setOpen((v) => !v); setScreen("contacts"); setArrival(null); }}
+        onClick={() => { setOpen((v) => !v); setScreen("chats"); setArrival(null); }}
         aria-label="휴대폰 열기"
         title="Messages"
       >
@@ -445,79 +488,112 @@ export function PhoneDM() {
 
       {open && (
         <aside className="dm-phone-panel">
-          {screen === "contacts" ? (
+          {screen !== "chat" ? (
             <>
               <header className="dm-phone-header">
-                <div className="dm-heading"><small>PRIVATE LINE / DIRECTORY</small><strong>MESSAGES</strong></div>
+                <div className="dm-heading">
+                  <small>PRIVATE LINE / {screen === "chats" ? "CONVERSATIONS" : "DIRECTORY"}</small>
+                  <strong>{screen === "chats" ? "CHATS" : "CONTACTS"}</strong>
+                </div>
                 <button className="dm-close" aria-label="닫기" onClick={() => setOpen(false)}>×</button>
               </header>
+
               <div className="dm-directory-top">
-                <div className="dm-directory-intro"><span>PHONEBOOK</span><small>{contacts.length} CONTACTS</small></div>
+                <div className="dm-directory-intro">
+                  <span>{screen === "chats" ? "CHAT ROOMS" : "PHONEBOOK"}</span>
+                  <small>{screen === "chats" ? chatEntries.length + " CHATS" : contacts.length + " CONTACTS"}</small>
+                </div>
                 <input
                   className="dm-search"
-                  placeholder="캐릭터 이름 검색"
-                  aria-label="캐릭터 이름 검색"
+                  placeholder={screen === "chats" ? "대화방 검색" : "캐릭터 이름 검색"}
+                  aria-label={screen === "chats" ? "대화방 검색" : "캐릭터 이름 검색"}
                   value={queryText}
                   onChange={(e) => setQueryText(e.target.value)}
                 />
               </div>
+
               <div className="dm-directory-list">
                 {!dmLoaded && <p className="dm-empty">메시지를 불러오는 중입니다…</p>}
                 {memberError && <p className="dm-inline-error">{memberError}</p>}
                 {dmError && <p className="dm-inline-error">{dmError}</p>}
-                {filteredRecent.length > 0 && (
-                  <section className="dm-directory-section">
-                    <h3>RECENT <span>최근 대화</span></h3>
-                    {filteredRecent.map((c) => {
-                      const last = lastFor(c);
-                      const unread = messages.filter((m) =>
-                        contactRooms(c).some((r) => r.id === m.roomId) &&
-                        m.senderId !== user.id && m.date > (seen[m.roomId] ?? "")
-                      ).length;
-                      return (
+
+                {screen === "contacts" ? (
+                  searchedContacts.length > 0 ? (
+                    <section className="dm-directory-section">
+                      <h3>CHARACTERS <span>메시지를 보낼 수 있는 캐릭터</span></h3>
+                      {searchedContacts.map((c) => (
                         <button key={c.key} className="dm-contact" onClick={() => chooseContact(c)}>
                           <ContactPortrait contact={c} />
                           <span className="dm-contact-copy">
                             <strong>{c.name}</strong>
-                            <small>{last?.text ?? "대화 기록"}</small>
+                            <small>대화하기</small>
+                          </span>
+                          <span className="dm-contact-chevron">›</span>
+                        </button>
+                      ))}
+                    </section>
+                  ) : dmLoaded && (
+                    <div className="dm-empty">
+                      {queryText ? "검색 결과가 없습니다." : "등록된 연락처가 없습니다."}
+                      <small>다른 회원에게 플레이·편집 권한이 부여된 캐릭터만 표시됩니다.</small>
+                    </div>
+                  )
+                ) : (
+                  searchedChats.length > 0 ? (
+                    <section className="dm-directory-section">
+                      <h3>CONVERSATIONS <span>채팅방</span></h3>
+                      {searchedChats.map((entry) => (
+                        <button key={entry.room.id} className="dm-contact" onClick={() => openChatEntry(entry)}>
+                          <ContactPortrait contact={entry.contact} />
+                          <span className="dm-contact-copy">
+                            <strong>{entry.contact.name}</strong>
+                            <small>
+                              {entry.myCharacterName ? entry.myCharacterName + " · " : ""}
+                              {entry.last?.text ?? "대화 기록"}
+                            </small>
                           </span>
                           <span className="dm-contact-end">
-                            <time>{displayTime(last?.date)}</time>
-                            {unread > 0 && <i>{unread > 9 ? "9+" : unread}</i>}
+                            <time>{displayTime(entry.last?.date ?? entry.room.createdAt)}</time>
+                            {entry.unread > 0 && <i>{entry.unread > 9 ? "9+" : entry.unread}</i>}
                           </span>
                         </button>
-                      );
-                    })}
-                  </section>
-                )}
-                {otherContacts.length > 0 && (
-                  <section className="dm-directory-section">
-                    <h3>CONTACTS <span>캐릭터 전화번호부</span></h3>
-                    {otherContacts.map((c) => (
-                      <button key={c.key} className="dm-contact" onClick={() => chooseContact(c)}>
-                        <ContactPortrait contact={c} />
-                        <span className="dm-contact-copy">
-                          <strong>{c.name}</strong>
-                          <small>새 대화 시작</small>
-                        </span>
-                        <span className="dm-contact-chevron">›</span>
-                      </button>
-                    ))}
-                  </section>
-                )}
-                {dmLoaded && filteredRecent.length === 0 && otherContacts.length === 0 && (
-                  <div className="dm-empty">
-                    {queryText ? "검색 결과가 없습니다." : "연락처가 없습니다."}
-                    <small>캐릭터에 회원의 플레이 권한이 연결되면 연락처에 표시됩니다.</small>
-                  </div>
+                      ))}
+                    </section>
+                  ) : dmLoaded && (
+                    <div className="dm-empty">
+                      {queryText ? "검색 결과가 없습니다." : "아직 열린 채팅방이 없습니다."}
+                      <small>연락처에서 캐릭터를 선택해 대화를 시작하세요.</small>
+                    </div>
+                  )
                 )}
               </div>
-              <footer className="dm-directory-footer">PRIVATE MESSAGES · CHARACTER LINE</footer>
+
+              <nav className="dm-bottom-tabs" aria-label="휴대폰 메뉴">
+                <button
+                  type="button"
+                  className={screen === "contacts" ? "active" : ""}
+                  aria-current={screen === "contacts" ? "page" : undefined}
+                  onClick={() => { setScreen("contacts"); setQueryText(""); }}
+                >
+                  <span aria-hidden="true">♙</span>
+                  <small>연락처</small>
+                </button>
+                <button
+                  type="button"
+                  className={screen === "chats" ? "active" : ""}
+                  aria-current={screen === "chats" ? "page" : undefined}
+                  onClick={() => { setScreen("chats"); setQueryText(""); }}
+                >
+                  <span aria-hidden="true">▤</span>
+                  <small>채팅</small>
+                  {unreadCount > 0 && <i>{unreadCount > 9 ? "9+" : unreadCount}</i>}
+                </button>
+              </nav>
             </>
           ) : (
             <>
               <header className="dm-phone-header dm-chat-header">
-                <button className="dm-back" onClick={() => { setScreen("contacts"); setDmError(""); }} aria-label="연락처 목록으로">‹</button>
+                <button className="dm-back" onClick={() => { setScreen(backScreen); setDmError(""); }} aria-label="연락처 목록으로">‹</button>
                 {activeContact && <ContactPortrait contact={activeContact} small />}
                 <div className="dm-heading">
                   <strong>{activeContact?.name ?? "MESSAGE"}</strong>
@@ -539,8 +615,8 @@ export function PhoneDM() {
               </div>
 
               {dmError && <p className="dm-inline-error">{dmError}</p>}
-              {activeContact?.legacyRoomId ? (
-                <div className="dm-archive-note">이전 버전의 대화 기록입니다. 전화번호부에서 캐릭터를 선택해 새 대화를 시작할 수 있습니다.</div>
+              {activeContact?.legacyRoomId || !!activeRoomOverride ? (
+                <div className="dm-archive-note">이 대화는 기록 열람만 가능합니다. 캐릭터의 플레이 권한을 확인해 주세요.</div>
               ) : (
                 <form className="dm-compose dm-compose-character" onSubmit={sendMessage}>
                   <label className="dm-sender-select">
@@ -559,9 +635,9 @@ export function PhoneDM() {
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="메시지를 입력하세요…"
-                      disabled={!activeContact?.active || !sender || sending}
+                      disabled={!activeContact?.active || !sender || !!activeRoomOverride || sending}
                     />
-                    <button type="submit" disabled={!message.trim() || !activeContact?.active || !sender || sending}>
+                    <button type="submit" disabled={!message.trim() || !activeContact?.active || !sender || !!activeRoomOverride || sending}>
                       {sending ? "···" : "전송"} <span aria-hidden="true">↗</span>
                     </button>
                   </div>
