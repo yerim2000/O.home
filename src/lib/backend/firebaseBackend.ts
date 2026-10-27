@@ -290,6 +290,19 @@ export async function createFirebaseBackend(cfg: FirebaseCfg): Promise<Backend> 
     },
 
     async fetchList<T extends ListItem>(coll: string): Promise<T[]> {
+      // DM 문서는 참여자 UID가 포함된 항목만 읽는다.
+      if (coll === 'dm_rooms' || coll === 'dm_messages') {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return [];
+        const snap = await getDocsFromServer(query(
+          collection(db, coll), where('data.memberIds', 'array-contains', uid),
+        ));
+        return snap.docs.map(d => {
+          const raw = d.data() as { data?: Record<string, unknown> };
+          return { ...(raw.data ?? {}), id: d.id } as T;
+        }).sort((a, b) => String((a as Record<string, unknown>).date ?? (a as Record<string, unknown>).createdAt ?? '')
+          .localeCompare(String((b as Record<string, unknown>).date ?? (b as Record<string, unknown>).createdAt ?? '')));
+      }
       const sets = await readSets();
       // 반드시 getDocsFromServer — 일반 getDocs는 로컬(오프라인) 캐시가 있으면 그걸로 조용히 성공해
       // 버린다. 실시간 구독이 한 번의 쓰기에 두 번(로컬 반영·서버 확정) 반응해 재조회가 겹칠 때
@@ -365,6 +378,15 @@ export async function createFirebaseBackend(cfg: FirebaseCfg): Promise<Backend> 
     },
 
     subscribe(coll, onChange) {
+      if (coll === 'dm_rooms' || coll === 'dm_messages') {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return () => { /* 로그인 전 */ };
+        return onSnapshot(
+          query(collection(db, coll), where('data.memberIds', 'array-contains', uid)),
+          () => onChange(),
+          () => { /* 권한 없음 */ },
+        );
+      }
       // 조건이 두 갈래면 구독도 두 개 — fetchList와 같은 이유(질의 전체 거부 방지)
       let offs: Array<() => void> = [];
       let stopped = false;
