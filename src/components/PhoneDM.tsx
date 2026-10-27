@@ -575,7 +575,11 @@ export function PhoneDM() {
                   aria-current={screen === "contacts" ? "page" : undefined}
                   onClick={() => { setScreen("contacts"); setQueryText(""); }}
                 >
-                  <span aria-hidden="true">♙</span>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M16 20v-1.8a4.2 4.2 0 0 0-4.2-4.2H6.2A4.2 4.2 0 0 0 2 18.2V20" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M19 8a3.2 3.2 0 0 1 0 6.4M22 20v-1.8a4.2 4.2 0 0 0-3-4" />
+                  </svg>
                   <small>연락처</small>
                 </button>
                 <button
@@ -584,7 +588,10 @@ export function PhoneDM() {
                   aria-current={screen === "chats" ? "page" : undefined}
                   onClick={() => { setScreen("chats"); setQueryText(""); }}
                 >
-                  <span aria-hidden="true">▤</span>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-7.5A7.5 7.5 0 0 1 10.5 6H12" />
+                    <path d="M10 3.4A7.8 7.8 0 0 1 20.6 14L21 17l-3.4-1.8" />
+                  </svg>
                   <small>채팅</small>
                   {unreadCount > 0 && <i>{unreadCount > 9 ? "9+" : unreadCount}</i>}
                 </button>
