@@ -631,12 +631,13 @@ export function PhoneDM() {
         aria-label="휴대폰 열기"
         title="DAKIN PHONE"
       >
-        <span className="dm-launcher-speaker" aria-hidden="true" />
-        <span className="dm-launcher-screen" aria-hidden="true"><span>✉</span></span>
-        <span className="dm-launcher-nav" aria-hidden="true" />
-        <span className="dm-launcher-keys" aria-hidden="true">
-          {Array.from({ length: 12 }, (_, i) => <i key={i} />)}
-        </span>
+        <svg className="dm-launcher-icon" viewBox="0 0 24 24" aria-hidden="true"
+          fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="6" y="2.5" width="12" height="19" rx="2.8" />
+          <line x1="10" y1="5.8" x2="14" y2="5.8" />
+          <rect x="8.4" y="8.4" width="7.2" height="7" rx=".9" />
+          <circle cx="12" cy="18.4" r=".85" fill="currentColor" stroke="none" />
+        </svg>
         {unreadCount > 0 && <i className="dm-unread-badge">{unreadCount > 9 ? "9+" : unreadCount}</i>}
       </button>
 
@@ -938,7 +939,7 @@ export function PhoneDM() {
             <span className="dm-retro-softkey">↵</span>
           </div>
           <div className="dm-retro-keypad" aria-hidden="true">
-            {["1","2 abc","3 def","4 ghi","5 jkl","6 mno","7 pqrs","8 tuv","9 wxyz","✱","0","＃"].map((key) => (
+            {["1","2","3","4","5","6","7","8","9","*","0","#"].map((key) => (
               <span key={key}>{key}</span>
             ))}
           </div>
