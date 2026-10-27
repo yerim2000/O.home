@@ -2233,10 +2233,8 @@ body.edit-on .main-grid.gridlines .wgt{outline-offset:0}
   font-weight: 650;
 }
 .dm-portrait > span { line-height: 1; }
-.dm-portrait .crop-outer,
-.dm-portrait .crop-clip,
-.dm-portrait > div,
-.dm-portrait img { width: 100% !important; height: 100% !important; object-fit: cover; }
+.dm-portrait > div { width: 100%; height: 100%; }
+.dm-portrait img { max-width: none; }
 .dm-portrait-small { width: 36px; height: 36px; border-radius: 11px; }
 .dm-contact-copy {
   display: grid;
@@ -2369,4 +2367,29 @@ body.edit-on .main-grid.gridlines .wgt{outline-offset:0}
 @media (max-width: 480px) {
   .dm-phone-panel .dm-directory-top { padding: 15px 14px; }
   .dm-phone-panel .dm-contact { padding: 12px 14px; }
+}
+
+
+/* 자놀 역극 말풍선: 작성자 UID가 내 계정과 같은 것만 오른쪽 */
+.rp-msgs > .msg.other {
+  align-self: flex-start;
+  margin-left: 0;
+  margin-right: auto;
+  flex-direction: row;
+  text-align: left;
+}
+.rp-msgs > .msg.me {
+  align-self: flex-end;
+  margin-left: auto;
+  margin-right: 0;
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.rp-msgs > .msg.other .bub {
+  border-radius: 13px;
+  border-top-left-radius: 4px;
+}
+.rp-msgs > .msg.me .bub {
+  border-radius: 13px;
+  border-top-right-radius: 4px;
 }
