@@ -657,9 +657,8 @@ export function PhoneDM() {
 
       {open && (
         <aside className="dm-phone-panel dm-retro-phone">
-          <div className="dm-retro-top">
-            <div className="dm-retro-speaker" aria-hidden="true"><i /><i /><i /><i /><i /></div>
-            <span className="dm-retro-brand">DAKIN</span>
+          <div className="dm-retro-top" aria-hidden="true">
+            <div className="dm-retro-speaker"><i /><i /><i /><i /><i /></div>
           </div>
           <div className="dm-retro-bezel">
             <div className="dm-retro-status" aria-hidden="true">
@@ -939,8 +938,15 @@ export function PhoneDM() {
             <span className="dm-retro-softkey">↵</span>
           </div>
           <div className="dm-retro-keypad" aria-hidden="true">
-            {["1","2","3","4","5","6","7","8","9","*","0","#"].map((key) => (
-              <span key={key}>{key}</span>
+            {[
+              ["1", ""], ["2", "abc"], ["3", "def"],
+              ["4", "ghi"], ["5", "jkl"], ["6", "mno"],
+              ["7", "pqrs"], ["8", "tuv"], ["9", "wxyz"],
+              ["*", "+"], ["0", "—"], ["#", ""],
+            ].map(([number, letters]) => (
+              <span className="dm-retro-key" key={number}>
+                <b>{number}</b>{letters && <small>{letters}</small>}
+              </span>
             ))}
           </div>
         </aside>
