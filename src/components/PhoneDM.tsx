@@ -16,6 +16,10 @@ type DMRoom = {
   id: string;
   memberIds: string[];
   createdAt: string;
+  /** 각 회원이 지정한 대화방 제목 — 상대방의 표시 이름은 바꾸지 않는다. */
+  titleByUser?: Record<string, string>;
+  /** 회원별 삭제 시각 — 삭제 이후 메시지가 오면 채팅 목록에 다시 나타난다. */
+  deletedAtBy?: Record<string, string>;
   // 새 대화: 회원이 아니라 두 캐릭터의 조합으로 방을 식별한다.
   characters?: ParticipantCharacter[];
 };
@@ -33,6 +37,7 @@ type DMMessage = {
 type ChatEntry = {
   room: DMRoom;
   contact: Contact;
+  displayName: string;
   myCharacterName: string;
   last?: DMMessage;
   unread: number;
@@ -85,7 +90,7 @@ function ContactPortrait({ contact, small = false }: { contact: Contact; small?:
       {picture ? (
         <CroppedBlobImg fileRef={picture} crop={ch?.thumbCrop} />
       ) : (
-        <span>{contact.legacyRoomId ? "↶" : initials(contact.name)}</span>
+        <span>{contact.legacyRoomId && !contact.character ? "↶" : initials(contact.name)}</span>
       )}
     </span>
   );
@@ -107,6 +112,11 @@ export function PhoneDM() {
   const [senderCharacterId, setSenderCharacterId] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [manageRoomId, setManageRoomId] = useState("");
+  const [manageStep, setManageStep] = useState<"options" | "rename" | "delete">("options");
+  const [renameDraft, setRenameDraft] = useState("");
+  const [manageBusy, setManageBusy] = useState(false);
+  const [manageError, setManageError] = useState("");
   const [rooms, setRooms] = useState<DMRoom[]>([]);
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [dmLoaded, setDmLoaded] = useState(false);
@@ -144,6 +154,8 @@ export function PhoneDM() {
     setActiveKey("");
     setHistoricContact(null);
     setActiveRoomOverride("");
+    setManageRoomId("");
+    setManageError("");
     if (!user) { setSeen({}); return; }
     try { setSeen(JSON.parse(localStorage.getItem(seenKey(user.id)) || "{}")); }
     catch { setSeen({}); }
@@ -238,28 +250,44 @@ export function PhoneDM() {
       if (!room.memberIds.includes(user.id)) continue;
       const otherId = room.memberIds.find((uid) => uid !== user.id);
       if (!otherId) continue;
-      const other = room.characters?.find((p) => p.userId === otherId);
-      const mine = room.characters?.find((p) => p.userId === user.id);
-      const otherChar = chars.find((c) => c.id === other?.characterId);
-      const key = other ? otherId + "|" + other.characterId : "legacy:" + room.id;
-      const allowTarget = !!otherChar && !!charGrant(otherChar, otherId);
-      const contact = contacts.find((c) => c.key === key) ?? {
-        key, targetId: otherId, characterId: other?.characterId ?? "",
-        name: otherChar?.name ?? other?.characterName ?? "이전 대화",
-        color: otherChar?.color ?? "#858b95", character: otherChar,
-        active: allowTarget,
-        legacyRoomId: other ? undefined : room.id,
-      };
+
       const roomMsgs = messages.filter((m) => m.roomId === room.id)
         .sort((a, b) => b.date.localeCompare(a.date));
       const last = roomMsgs[0];
+      const deletedAt = room.deletedAtBy?.[user.id] ?? "";
+      // DELETE는 내 채팅 목록에서만 숨긴다. 삭제 뒤 상대가 새 문자를 보내면 다시 표시한다.
+      if (deletedAt && (last?.date ?? room.createdAt) <= deletedAt) continue;
+
+      const other = room.characters?.find((p) => p.userId === otherId);
+      const mine = room.characters?.find((p) => p.userId === user.id);
+      const otherChar = chars.find((c) => c.id === other?.characterId);
+      // 구버전 회원 단위 대화방에는 수신 캐릭터 ID가 없다.
+      // 상대방이 발화한 캐릭터가 있으면 그걸 사용하고, 없으면 상대가 관리하는
+      // 캐릭터가 딱 하나일 때에만 유추한다. 엉뚱한 내 캐릭터로 표시하지 않는다.
+      const otherSpeech = roomMsgs.find((m) => m.senderId === otherId && !!m.characterName);
+      const grantedToOther = chars.filter((c) => !!charGrant(c, otherId));
+      const inferred = otherSpeech
+        ? chars.find((c) => c.id === otherSpeech.characterId)
+        : grantedToOther.length === 1 ? grantedToOther[0] : undefined;
+      const inferredName = inferred?.name ?? otherSpeech?.characterName;
+      const key = other ? otherId + "|" + other.characterId : "legacy:" + room.id;
+      const allowTarget = !!otherChar && !!charGrant(otherChar, otherId);
+      const contact = contacts.find((c) => c.key === key) ?? {
+        key, targetId: otherId, characterId: other?.characterId ?? inferred?.id ?? "",
+        name: otherChar?.name ?? other?.characterName ?? inferredName ?? "상대 캐릭터",
+        color: otherChar?.color ?? inferred?.color ?? "#858b95",
+        character: otherChar ?? inferred,
+        active: allowTarget,
+        legacyRoomId: other ? undefined : room.id,
+      };
+
       const myCharacter = chars.find((c) => c.id === mine?.characterId);
+      const boundary = deletedAt > (seen[room.id] ?? "") ? deletedAt : (seen[room.id] ?? "");
       list.push({
         room, contact, last,
+        displayName: room.titleByUser?.[user.id]?.trim() || contact.name,
         myCharacterName: myCharacter?.name ?? mine?.characterName ?? "",
-        unread: roomMsgs.filter((m) =>
-          m.senderId !== user.id && m.date > (seen[room.id] ?? "")
-        ).length,
+        unread: roomMsgs.filter((m) => m.senderId !== user.id && m.date > boundary).length,
         sortDate: last?.date ?? room.createdAt,
       });
     }
@@ -274,7 +302,7 @@ export function PhoneDM() {
   const searchedChats = useMemo(() => {
     const q = queryText.trim().toLowerCase();
     return chatEntries.filter((entry) =>
-      !q || entry.contact.name.toLowerCase().includes(q) ||
+      !q || entry.displayName.toLowerCase().includes(q) ||
       entry.myCharacterName.toLowerCase().includes(q) ||
       (entry.last?.text ?? "").toLowerCase().includes(q)
     );
@@ -294,11 +322,16 @@ export function PhoneDM() {
   const roomMessages = useMemo(() =>
     messages.filter((m) => m.roomId === activeRoomId).sort((a, b) => a.date.localeCompare(b.date)),
   [messages, activeRoomId]);
+  const activeRoomName = chatEntries.find((e) => e.room.id === activeRoomId)?.displayName
+    ?? activeContact?.name ?? "MESSAGE";
 
-  // 읽지 않은 메시지는 회원이 아니라 *대화방* 기준으로 보관한다.
-  const unreadCount = messages.filter((m) =>
-    user && m.senderId !== user.id && m.date > (seen[m.roomId] ?? "")
-  ).length;
+  // 삭제한 대화방의 옛 메시지는 읽지 않음 표시에서 제외한다.
+  const unreadCount = messages.filter((m) => {
+    if (!user || m.senderId === user.id) return false;
+    const deletedAt = rooms.find((r) => r.id === m.roomId)?.deletedAtBy?.[user.id] ?? "";
+    const boundary = deletedAt > (seen[m.roomId] ?? "") ? deletedAt : (seen[m.roomId] ?? "");
+    return m.date > boundary;
+  }).length;
 
   const markSeen = useCallback((roomId: string) => {
     if (!user || !roomId) return;
@@ -393,6 +426,89 @@ export function PhoneDM() {
     setArrival(null);
   }
 
+  // 우클릭 또는 ··· 버튼으로 대화방 메뉴를 연다. 같은 메뉴를 모바일에서도 사용한다.
+  function openRoomMenu(roomId: string) {
+    setManageRoomId(roomId);
+    setManageStep("options");
+    setRenameDraft("");
+    setManageError("");
+  }
+
+  function closeRoomMenu() {
+    if (manageBusy) return;
+    setManageRoomId("");
+    setManageError("");
+  }
+
+  const managedEntry = chatEntries.find((e) => e.room.id === manageRoomId);
+
+  async function saveRoomName(useDefault = false) {
+    if (!user || !managedEntry || manageBusy) return;
+    const title = useDefault ? "" : renameDraft.trim();
+    if (!useDefault && !title) {
+      setManageError("채팅방 이름을 입력해 주세요.");
+      return;
+    }
+    const be = backend();
+    if (!be?.updateDmRoomPersonal) {
+      setManageError("Firebase 연결 상태를 확인해 주세요.");
+      return;
+    }
+    setManageBusy(true);
+    setManageError("");
+    try {
+      await be.updateDmRoomPersonal(manageRoomId, "rename", title);
+      setRooms((current) => current.map((r) => {
+        if (r.id !== manageRoomId) return r;
+        const byUser = { ...(r.titleByUser ?? {}) };
+        if (title) byUser[user.id] = title.slice(0, 60);
+        else delete byUser[user.id];
+        return { ...r, titleByUser: byUser };
+      }));
+      toast(title ? "채팅방 이름을 변경했습니다." : "기본 이름으로 되돌렸습니다.");
+      setManageRoomId("");
+    } catch (error) {
+      setManageError("변경 실패: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function deleteRoomForMe() {
+    if (!user || !managedEntry || manageBusy) return;
+    const be = backend();
+    if (!be?.updateDmRoomPersonal) {
+      setManageError("Firebase 연결 상태를 확인해 주세요.");
+      return;
+    }
+    setManageBusy(true);
+    setManageError("");
+    const roomId = manageRoomId;
+    try {
+      await be.updateDmRoomPersonal(roomId, "delete");
+      const deletedAt = new Date().toISOString();
+      setRooms((current) => current.map((r) =>
+        r.id === roomId
+          ? { ...r, deletedAtBy: { ...(r.deletedAtBy ?? {}), [user.id]: deletedAt } }
+          : r
+      ));
+      setSeen((current) => {
+        const next = { ...current, [roomId]: deletedAt };
+        try { localStorage.setItem(seenKey(user.id), JSON.stringify(next)); }
+        catch { /* 기기 저장이 차단된 경우 */ }
+        return next;
+      });
+      setArrival((current) => current?.roomId === roomId ? null : current);
+      if (activeRoomId === roomId) setScreen("chats");
+      setManageRoomId("");
+      toast("채팅방을 내 목록에서 삭제했습니다.");
+    } catch (error) {
+      setManageError("삭제 실패: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
   async function sendMessage(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!user || !activeContact || !sender || !activeRoomId || !message.trim() || sending) return;
@@ -478,7 +594,7 @@ export function PhoneDM() {
             <span className="dm-arrival-mark">✉</span>
             <span className="dm-arrival-copy">
               <b>NEW MESSAGE</b>
-              <strong>{rooms.find((r) => r.id === arrival.roomId)?.characters?.find((p) => p.userId !== user.id)?.characterName ?? arrival.characterName}</strong>
+              <strong>{chatEntries.find((entry) => entry.room.id === arrival.roomId)?.displayName ?? arrival.characterName}</strong>
               <small>{arrival.text}</small>
             </span>
           </button>
@@ -543,20 +659,36 @@ export function PhoneDM() {
                     <section className="dm-directory-section">
                       <h3>CONVERSATIONS <span>채팅방</span></h3>
                       {searchedChats.map((entry) => (
-                        <button key={entry.room.id} className="dm-contact" onClick={() => openChatEntry(entry)}>
-                          <ContactPortrait contact={entry.contact} />
-                          <span className="dm-contact-copy">
-                            <strong>{entry.contact.name}</strong>
-                            <small>
-                              {entry.myCharacterName ? entry.myCharacterName + " · " : ""}
-                              {entry.last?.text ?? "대화 기록"}
-                            </small>
-                          </span>
-                          <span className="dm-contact-end">
-                            <time>{displayTime(entry.last?.date ?? entry.room.createdAt)}</time>
-                            {entry.unread > 0 && <i>{entry.unread > 9 ? "9+" : entry.unread}</i>}
-                          </span>
-                        </button>
+                        <div
+                          key={entry.room.id}
+                          className="dm-room-row"
+                          onContextMenu={(e) => { e.preventDefault(); openRoomMenu(entry.room.id); }}
+                        >
+                          <button
+                            className="dm-contact"
+                            title="대화방 열기"
+                            onClick={() => openChatEntry(entry)}
+                          >
+                            <ContactPortrait contact={entry.contact} />
+                            <span className="dm-contact-copy">
+                              <strong>{entry.displayName}</strong>
+                              <small>
+                                {entry.myCharacterName ? entry.myCharacterName + " · " : ""}
+                                {entry.last?.text ?? "대화 기록"}
+                              </small>
+                            </span>
+                            <span className="dm-contact-end">
+                              <time>{displayTime(entry.last?.date ?? entry.room.createdAt)}</time>
+                              {entry.unread > 0 && <i>{entry.unread > 9 ? "9+" : entry.unread}</i>}
+                            </span>
+                          </button>
+                          <button
+                            className="dm-room-more"
+                            aria-label={entry.displayName + " 채팅방 관리"}
+                            title="이름 변경 / 삭제"
+                            onClick={() => openRoomMenu(entry.room.id)}
+                          >···</button>
+                        </div>
                       ))}
                     </section>
                   ) : dmLoaded && (
@@ -603,7 +735,7 @@ export function PhoneDM() {
                 <button className="dm-back" onClick={() => { setScreen(backScreen); setDmError(""); }} aria-label="연락처 목록으로">‹</button>
                 {activeContact && <ContactPortrait contact={activeContact} small />}
                 <div className="dm-heading">
-                  <strong>{activeContact?.name ?? "MESSAGE"}</strong>
+                  <strong>{activeRoomName}</strong>
                   <small>{activeContact?.legacyRoomId ? "ARCHIVED CONVERSATION" : "PRIVATE CONVERSATION"}</small>
                 </div>
                 <button className="dm-close" aria-label="닫기" onClick={() => setOpen(false)}>×</button>
@@ -652,6 +784,82 @@ export function PhoneDM() {
                 </form>
               )}
             </>
+          )}
+
+          {manageRoomId && managedEntry && (
+            <div className="dm-manage-overlay" onMouseDown={(e) => {
+              if (e.target === e.currentTarget) closeRoomMenu();
+            }}>
+              <div className="dm-manage-sheet" role="dialog" aria-modal="true"
+                aria-label={manageStep === "options" ? "채팅방 관리" : manageStep === "rename" ? "채팅방 이름 변경" : "채팅방 삭제"}>
+                {manageStep === "options" ? (
+                  <>
+                    <div className="dm-manage-heading">
+                      <small>CHAT OPTIONS</small>
+                      <strong>{managedEntry.displayName}</strong>
+                    </div>
+                    <button className="dm-manage-option" onClick={() => {
+                      setRenameDraft(managedEntry.room.titleByUser?.[user.id] || managedEntry.displayName);
+                      setManageStep("rename");
+                      setManageError("");
+                    }}>
+                      <span aria-hidden="true">✎</span> 채팅방 이름 변경
+                    </button>
+                    <button className="dm-manage-option dm-danger" onClick={() => {
+                      setManageStep("delete");
+                      setManageError("");
+                    }}>
+                      <span aria-hidden="true">⌫</span> 채팅방 DELETE
+                    </button>
+                    <button className="dm-manage-cancel" onClick={closeRoomMenu}>취소</button>
+                  </>
+                ) : manageStep === "rename" ? (
+                  <form onSubmit={(e) => { e.preventDefault(); void saveRoomName(); }}>
+                    <div className="dm-manage-heading">
+                      <small>RENAME CONVERSATION</small>
+                      <strong>채팅방 이름 변경</strong>
+                    </div>
+                    <input
+                      className="dm-manage-input"
+                      autoFocus
+                      maxLength={60}
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      placeholder="새 채팅방 이름"
+                      aria-label="새 채팅방 이름"
+                      disabled={manageBusy}
+                    />
+                    <p className="dm-manage-hint">바꾼 이름은 내 채팅 목록에만 적용됩니다.</p>
+                    {manageError && <p className="dm-manage-error">{manageError}</p>}
+                    <div className="dm-manage-buttons">
+                      <button type="button" onClick={() => void saveRoomName(true)} disabled={manageBusy}>기본 이름</button>
+                      <button type="submit" className="primary" disabled={manageBusy || !renameDraft.trim()}>
+                        {manageBusy ? "저장 중…" : "저장"}
+                      </button>
+                    </div>
+                    <button type="button" className="dm-manage-cancel" onClick={closeRoomMenu} disabled={manageBusy}>취소</button>
+                  </form>
+                ) : (
+                  <>
+                    <div className="dm-manage-heading">
+                      <small>DELETE CONVERSATION</small>
+                      <strong>이 채팅방을 삭제할까요?</strong>
+                    </div>
+                    <p className="dm-manage-hint">
+                      내 채팅 목록에서만 삭제됩니다. 상대방 기록은 그대로 남으며,
+                      나중에 새 메시지가 오면 다시 목록에 나타납니다.
+                    </p>
+                    {manageError && <p className="dm-manage-error">{manageError}</p>}
+                    <div className="dm-manage-buttons">
+                      <button onClick={closeRoomMenu} disabled={manageBusy}>취소</button>
+                      <button className="danger" onClick={() => void deleteRoomForMe()} disabled={manageBusy}>
+                        {manageBusy ? "삭제 중…" : "DELETE"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </aside>
       )}
