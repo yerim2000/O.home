@@ -92,7 +92,7 @@ function ContactPortrait({ contact, small = false }: { contact: Contact; small?:
       aria-hidden="true"
     >
       {picture ? (
-        <CroppedBlobImg fileRef={picture} crop={ch?.thumbCrop} />
+        <CroppedBlobImg fileRef={picture} crop={ch?.avatarCrop ?? ch?.thumbCrop} />
       ) : (
         <span>{contact.legacyRoomId && !contact.character ? "↶" : initials(contact.name)}</span>
       )}
