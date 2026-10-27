@@ -64,7 +64,7 @@ function CharFace({ c, className, style }: {
   if (!rep) return <div className={`${className ?? ''} ph ${c?.thumbClass ?? ''}`} style={style} />;
   return (
     <div className={className} style={{ position: 'relative', overflow: 'hidden', ...style }}>
-      <CroppedBlobImg fileRef={rep} crop={c?.thumbCrop} />
+      <CroppedBlobImg fileRef={rep} crop={c?.avatarCrop ?? c?.thumbCrop} />
     </div>
   );
 }
@@ -139,9 +139,9 @@ function MiniProf({ member, char, isAdmin, onGo, onRemove, auUnregistered, side,
           <div className="face" data-tip="클릭하면 원본 보기"
             style={{ position: 'relative', overflow: 'hidden', cursor: 'zoom-in' }}
             onClick={e => { e.stopPropagation(); setLb(0); }}>
-            {/* 얼굴칸은 1:1 — 캐릭터의 3:4 썸네일 크롭을 그대로 쓰면 어긋나므로
-                자관에서 따로 잡아 둔 값이 있으면 그것을 쓴다 (우클릭 > 썸네일 위치) */}
-            <CroppedBlobImg fileRef={rep} crop={member.faceCrop ?? char.thumbCrop} />
+            {/* 자관의 개별 얼굴 위치 설정이 최우선, 없으면 캐릭터의 1:1 프사 설정을 사용한다.
+                그마저 없으면 기존 3:4 썸네일 위치로 호환 표시. */}
+            <CroppedBlobImg fileRef={rep} crop={member.faceCrop ?? char.avatarCrop ?? char.thumbCrop} />
           </div>
         ) : (
           <div className={`face ph ${char.thumbClass}`} />
@@ -1000,7 +1000,7 @@ export default function RelDetailPage() {
                   onClick={() => router.push(charHref(m.charId))}>
                   <div className={`face ph ${c.thumbClass}`}>
                     {!unreg && (c.arts?.[0] ?? c.thumbId) && (
-                      <CroppedBlobImg fileRef={c.arts?.[0] ?? c.thumbId} crop={c.thumbCrop} ph={c.thumbClass} />
+                      <CroppedBlobImg fileRef={c.thumbId ?? c.arts?.[0]} crop={c.avatarCrop ?? c.thumbCrop} ph={c.thumbClass} />
                     )}
                   </div>
                   <div className="nm">
