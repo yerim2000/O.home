@@ -3206,3 +3206,175 @@ body.edit-on .main-grid.gridlines .wgt{outline-offset:0}
   .dm-voice-marquee { overflow-x: auto; }
   .dm-voice-moving-text { position: static; transform: none; }
 }
+
+
+/* DM v7 — Compact, restrained retro phone (2026-10-27)
+   Smaller silhouette, straight speaker slits, subtle keys and a minimal launcher. */
+.dm-phone-button.dm-retro-launcher {
+  left: 22px;
+  bottom: 22px;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid #656e7a;
+  border-radius: 50%;
+  background: #252a32;
+  color: #d4d7d6;
+  box-shadow: 0 5px 15px #0007, inset 0 1px #ffffff14;
+  transform: none;
+}
+.dm-phone-button.dm-retro-launcher .dm-launcher-icon {
+  display: block;
+  width: 23px;
+  height: 23px;
+}
+.dm-phone-button.dm-retro-launcher:hover {
+  transform: translateY(-2px);
+  border-color: #bcc4c4;
+  filter: none;
+  background: #333943;
+}
+.dm-phone-button.dm-retro-launcher .dm-unread-badge {
+  top: -5px;
+  right: -5px;
+  border-color: #252a32;
+  background: #c7deb4;
+  color: #2e4630;
+}
+
+.dm-phone-panel.dm-retro-phone {
+  right: 22px;
+  bottom: 18px;
+  width: min(304px, calc(100vw - 24px));
+  height: min(625px, calc(100dvh - 32px));
+  padding: 10px 10px 10px;
+  border: 2px solid #252b33;
+  border-radius: 39px 39px 33px 33px / 38px 38px 31px 31px;
+  background: linear-gradient(105deg, #343b45 0%, #4f5863 12%, #343a46 30%, #363c47 82%, #222832 100%);
+  box-shadow: 0 15px 35px #0008, inset 2px 1px 1px #e5ece041, inset -3px -2px 5px #0e111766;
+}
+.dm-retro-phone .dm-retro-top {
+  min-height: 31px;
+  padding-top: 1px;
+  gap: 5px;
+}
+.dm-retro-phone .dm-retro-speaker {
+  display: flex;
+  height: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transform: none;
+}
+.dm-retro-phone .dm-retro-speaker i {
+  display: block;
+  width: 3px;
+  height: 7px;
+  border-radius: 2px;
+  background: #111820;
+  box-shadow: 1px 0 0 #929ba54d;
+  transform: none;
+}
+.dm-retro-phone .dm-retro-brand {
+  font: 750 10px/1 system-ui, sans-serif;
+  letter-spacing: .18em;
+  text-shadow: 0 1px 0 #131921;
+  color: #e4e5df;
+}
+.dm-retro-phone .dm-retro-bezel {
+  padding: 4px;
+  border: 2px solid #a1aab0;
+  border-radius: 13px 13px 18px 18px;
+  background: #87919b;
+  box-shadow: inset 0 1px 1px #eef0e755, 0 2px 2px #131923;
+}
+.dm-retro-phone .dm-retro-status {
+  height: 17px;
+  padding: 2px 7px 0;
+  border-radius: 7px 7px 0 0;
+  font-size: 8px;
+}
+.dm-retro-phone .dm-retro-display {
+  border-radius: 0 0 11px 11px;
+  box-shadow: inset 0 1px 9px #39533525;
+}
+.dm-retro-phone .dm-retro-controls {
+  height: 34px;
+  padding: 2px 13px 0;
+}
+.dm-retro-phone .dm-retro-softkey {
+  width: 44px;
+  height: 23px;
+  border-radius: 13px;
+  background: linear-gradient(#adb7bc,#7d8893);
+  border-color: #697784;
+  font-size: 12px;
+  box-shadow: 0 2px 3px #0006, inset 0 1px #edf0e477;
+  transform: none;
+}
+.dm-retro-phone .dm-retro-softkey:last-child { transform: none; }
+.dm-retro-phone .dm-retro-centerkey {
+  width: 72px;
+  height: 24px;
+  border: 1px solid #788591;
+  background: linear-gradient(#b4bfc2,#82909b);
+  box-shadow: 0 2px 3px #0007, inset 0 1px #f1f4ee7d;
+}
+.dm-retro-phone .dm-retro-centerkey i {
+  width: 25px;
+  height: 3px;
+  background: #5c8992;
+}
+.dm-retro-phone .dm-retro-keypad {
+  margin: 0;
+  padding: 3px 25px 2px;
+  grid-template-rows: repeat(4, 21px);
+  gap: 6px 13px;
+}
+.dm-retro-phone .dm-retro-keypad span {
+  height: 21px;
+  border: 1px solid #6b7680;
+  border-radius: 11px;
+  background: linear-gradient(#c2c9cc,#929da5);
+  color: #2c3640;
+  font: 600 11px/1 system-ui, sans-serif;
+  letter-spacing: 0;
+  box-shadow: 0 2px 3px #0006, inset 0 1px #e9f0ec83;
+}
+/* Interior controls gain room at the smaller scale. */
+.dm-retro-phone .dm-phone-header { min-height: 43px; padding: 7px 9px; }
+.dm-retro-phone .dm-directory-top { padding: 8px 10px; }
+.dm-retro-phone .dm-messages { padding: 9px 8px; }
+.dm-retro-phone .dm-compose { padding: 7px 8px 8px; }
+.dm-retro-phone .dm-compose-switch button { height: 25px; padding: 0 9px; font-size: 9px; }
+.dm-retro-phone .dm-contact { padding: 8px 10px; }
+.dm-retro-phone .dm-bottom-tabs { min-height: 47px; }
+.dm-retro-phone .dm-portrait { width: 39px; height: 39px; border-radius: 11px; }
+.dm-retro-phone .dm-portrait-small { width: 30px; height: 30px; border-radius: 8px; }
+.dm-retro-phone .dm-contact-copy strong { font-size: 12px; }
+.dm-retro-phone .dm-contact-copy small { font-size: 10px; }
+.dm-retro-phone .dm-compose-row input,
+.dm-retro-phone .dm-compose-row button { height: 34px; }
+.dm-retro-phone .dm-compose-row button { font-size: 10px; }
+
+@media (max-width: 480px) {
+  .dm-phone-panel.dm-retro-phone {
+    right: 9px;
+    bottom: 9px;
+    left: auto;
+    width: min(304px, calc(100vw - 18px));
+    height: min(625px, calc(100dvh - 18px));
+  }
+  .dm-phone-button.dm-retro-launcher { left: 15px; bottom: 16px; }
+  .dm-retro-phone .dm-retro-keypad { padding: 3px 25px 2px; grid-template-rows: repeat(4, 21px); gap: 6px 13px; }
+  .dm-retro-phone .dm-retro-keypad span { height: 21px; font-size: 11px; }
+}
+@media (max-height: 670px) {
+  .dm-phone-panel.dm-retro-phone { height: calc(100dvh - 14px); bottom: 7px; padding: 7px 9px; }
+  .dm-retro-phone .dm-retro-keypad { grid-template-rows: repeat(4, 17px); gap: 4px 12px; }
+  .dm-retro-phone .dm-retro-keypad span { height: 17px; font-size: 9px; }
+  .dm-retro-phone .dm-retro-controls { height: 29px; }
+  .dm-retro-phone .dm-retro-top { min-height: 26px; gap: 3px; }
+}
