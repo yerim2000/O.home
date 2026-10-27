@@ -289,6 +289,25 @@ export async function createFirebaseBackend(cfg: FirebaseCfg): Promise<Backend> 
       });
     },
 
+    async updateDmRoomPersonal(roomId, action, title) {
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error('메시지 설정을 변경하려면 로그인해야 합니다.');
+      if (!roomId) throw new Error('대화방을 찾을 수 없습니다.');
+      // 문서 전체를 덮어쓰지 않고, 나의 제목/삭제 시각 필드 한 개만 변경한다.
+      // 따라서 다른 회원의 이름 설정이나 새로 들어온 메시지와 충돌하지 않는다.
+      const roomRef = doc(db, 'dm_rooms', roomId);
+      const roomSnap = await getDoc(roomRef);
+      const room = roomSnap.data() as { data?: { memberIds?: string[] } } | undefined;
+      if (!roomSnap.exists() || !room?.data?.memberIds?.includes(uid)) {
+        throw new Error('접근할 수 없는 대화방입니다.');
+      }
+      const key = action === 'rename' ? 'titleByUser' : 'deletedAtBy';
+      const value = action === 'rename'
+        ? (title?.trim() ? title.trim().slice(0, 60) : fsMod.deleteField())
+        : new Date().toISOString();
+      await fsMod.updateDoc(roomRef, new fsMod.FieldPath('data', key, uid), value);
+    },
+
     async fetchList<T extends ListItem>(coll: string): Promise<T[]> {
       // DM 문서는 참여자 UID가 포함된 항목만 읽는다.
       if (coll === 'dm_rooms' || coll === 'dm_messages') {
