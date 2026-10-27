@@ -43,6 +43,8 @@ export interface Character {
   thumbClass: string;    // 데모 플레이스홀더 클래스
   thumbId?: string;      // 리스트 썸네일 (IndexedDB, 3:4 크롭)
   thumbCrop?: import("@/components/ui/CropEditor").CropValue;
+  /** 저널·역극·메신저의 작은 정사각형 프사 (1:1) — 3:4 리스트 썸네일과 별도 지정. */
+  avatarCrop?: import("@/components/ui/CropEditor").CropValue;
   /** 상세 페이지 중앙 아트의 위치 (v2.0) — 리스트 썸네일과 보이는 크기·비율이 달라
    *  같은 크롭을 쓰면 원하는 부분이 안 나온다. 따로 잡으면 상세에서는 이 값을 쓴다. */
   artCrop?: import("@/components/ui/CropEditor").CropValue;
@@ -81,6 +83,7 @@ export interface AuCharProfile {
   tabs?: CharTab[];
   thumbId?: string;
   thumbCrop?: import("@/components/ui/CropEditor").CropValue;
+  avatarCrop?: import("@/components/ui/CropEditor").CropValue;
   artCrop?: import("@/components/ui/CropEditor").CropValue;   // 상세 중앙 아트 위치 (v2.0)
   fontId?: string;
   nameSize?: number;     // 상세 큰 이름 크기 px (v2.0)
@@ -111,6 +114,7 @@ export function charWithAu(c: Character, auKey?: string | null): Character {
     artId: p.arts?.[0],
     thumbId: p.thumbId,
     thumbCrop: p.thumbCrop,
+    avatarCrop: p.avatarCrop, // AU에서도 프사는 별도이며 원본 AU의 사진을 물려받지 않는다.
     ...(p.fontId !== undefined ? { fontId: p.fontId } : {}),
     ...(p.bodyFontId !== undefined ? { bodyFontId: p.bodyFontId } : {}),
     // nameSize는 여태 병합에 빠져 있었다 — AU에 저장은 되는데 표시가 base 크기를 따랐다 (v2.0 수정)
