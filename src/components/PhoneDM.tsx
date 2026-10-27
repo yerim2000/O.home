@@ -33,6 +33,8 @@ type DMMessage = {
   characterName: string;
   text: string;
   date: string;
+  /** 'voice'는 음성 파일 없이 텍스트를 흘려 보여 주는 연출 메시지 */
+  kind?: "text" | "voice";
 };
 type ChatEntry = {
   room: DMRoom;
@@ -58,6 +60,8 @@ type Contact = {
 const ROOM_KEY = "ohome.dm.rooms.v1";
 const MESSAGE_KEY = "ohome.dm.messages.v1";
 const seenKey = (uid: string) => "ohome.dm.seen.v2:" + uid;
+const previewOf = (message?: DMMessage) =>
+  message?.kind === "voice" ? "1건의 음성메시지가 있습니다." : (message?.text ?? "대화 기록");
 
 function conversationId(myUid: string, myChar: string, otherUid: string, otherChar: string) {
   const pair = [
@@ -96,6 +100,46 @@ function ContactPortrait({ contact, small = false }: { contact: Contact; small?:
   );
 }
 
+
+/** 소리 대신 문자를 우→좌로 흐르게 하는 가짜 음성메시지. 녹음/오디오 권한은 사용하지 않는다. */
+function FauxVoiceMessage({ message }: { message: DMMessage }) {
+  const [playing, setPlaying] = useState(false);
+  const [replay, setReplay] = useState(0);
+  const duration = Math.max(8, Math.min(36, Math.ceil(message.text.length * 0.3)));
+  return (
+    <div className="dm-voice-box">
+      <button
+        type="button"
+        className="dm-voice-trigger"
+        aria-expanded={playing}
+        onClick={() => { setPlaying(true); setReplay((n) => n + 1); }}
+        title={playing ? "처음부터 다시 재생" : "음성메시지 확인"}
+      >
+        <span className="dm-voice-play" aria-hidden="true">{playing ? "↻" : "▶"}</span>
+        <span className="dm-voice-label">
+          <strong>1건의 음성메시지가 있습니다.</strong>
+          <small>{playing ? "텍스트 다시 재생" : "선택하여 확인"}</small>
+        </span>
+        <span className="dm-voice-arrow" aria-hidden="true">›</span>
+      </button>
+      {playing && (
+        <div className="dm-voice-reader" aria-label={"음성메시지 텍스트: " + message.text}>
+          <div className="dm-voice-marquee" key={replay}>
+            <span
+              className="dm-voice-moving-text"
+              style={{ animationDuration: String(duration) + "s" }}
+            >{message.text}</span>
+          </div>
+          <div className="dm-voice-progress" key={"progress-" + replay}>
+            <span style={{ animationDuration: String(duration) + "s" }} />
+          </div>
+          <small className="dm-voice-reader-caption">TRANSCRIPT · TEXT PLAYBACK</small>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PhoneDM() {
   const { user } = useAuth();
   const toast = useToast();
@@ -111,6 +155,7 @@ export function PhoneDM() {
   const [activeRoomOverride, setActiveRoomOverride] = useState("");
   const [senderCharacterId, setSenderCharacterId] = useState("");
   const [message, setMessage] = useState("");
+  const [composeKind, setComposeKind] = useState<"text" | "voice">("text");
   const [sending, setSending] = useState(false);
   const [manageRoomId, setManageRoomId] = useState("");
   const [manageStep, setManageStep] = useState<"options" | "rename" | "delete">("options");
@@ -154,6 +199,7 @@ export function PhoneDM() {
     setActiveKey("");
     setHistoricContact(null);
     setActiveRoomOverride("");
+    setComposeKind("text");
     setManageRoomId("");
     setManageError("");
     if (!user) { setSeen({}); return; }
@@ -546,6 +592,7 @@ export function PhoneDM() {
       characterName: sender.name,
       text: message.trim(),
       date: now,
+      kind: composeKind,
     };
 
     setSending(true);
@@ -561,7 +608,7 @@ export function PhoneDM() {
         type: "rp",
         toUserId: activeContact.targetId,
         title: "새 문자 · " + sender.name,
-        body: outgoing.text.slice(0, 80),
+        body: (outgoing.kind === "voice" ? "1건의 음성메시지가 있습니다." : outgoing.text).slice(0, 80),
         href: "/",
         dedupeKey: "dm:" + activeRoomId,
       });
@@ -579,12 +626,17 @@ export function PhoneDM() {
   return (
     <>
       <button
-        className="dm-phone-button"
+        className="dm-phone-button dm-retro-launcher"
         onClick={() => { setOpen((v) => !v); setScreen("chats"); setArrival(null); }}
         aria-label="휴대폰 열기"
-        title="Messages"
+        title="DAKIN PHONE"
       >
-        <span aria-hidden="true">☎</span>
+        <span className="dm-launcher-speaker" aria-hidden="true" />
+        <span className="dm-launcher-screen" aria-hidden="true"><span>✉</span></span>
+        <span className="dm-launcher-nav" aria-hidden="true" />
+        <span className="dm-launcher-keys" aria-hidden="true">
+          {Array.from({ length: 12 }, (_, i) => <i key={i} />)}
+        </span>
         {unreadCount > 0 && <i className="dm-unread-badge">{unreadCount > 9 ? "9+" : unreadCount}</i>}
       </button>
 
@@ -595,7 +647,7 @@ export function PhoneDM() {
             <span className="dm-arrival-copy">
               <b>NEW MESSAGE</b>
               <strong>{chatEntries.find((entry) => entry.room.id === arrival.roomId)?.displayName ?? arrival.characterName}</strong>
-              <small>{arrival.text}</small>
+              <small>{previewOf(arrival)}</small>
             </span>
           </button>
           <button className="dm-arrival-close" aria-label="알림 닫기" onClick={() => setArrival(null)}>×</button>
@@ -603,7 +655,16 @@ export function PhoneDM() {
       )}
 
       {open && (
-        <aside className="dm-phone-panel">
+        <aside className="dm-phone-panel dm-retro-phone">
+          <div className="dm-retro-top">
+            <div className="dm-retro-speaker" aria-hidden="true"><i /><i /><i /><i /><i /></div>
+            <span className="dm-retro-brand">DAKIN</span>
+          </div>
+          <div className="dm-retro-bezel">
+            <div className="dm-retro-status" aria-hidden="true">
+              <span>▂▄▆</span><span>SMS</span><span>▰▰▰</span>
+            </div>
+            <div className="dm-retro-display">
           {screen !== "chat" ? (
             <>
               <header className="dm-phone-header">
@@ -674,7 +735,7 @@ export function PhoneDM() {
                               <strong>{entry.displayName}</strong>
                               <small>
                                 {entry.myCharacterName ? entry.myCharacterName + " · " : ""}
-                                {entry.last?.text ?? "대화 기록"}
+                                {previewOf(entry.last)}
                               </small>
                             </span>
                             <span className="dm-contact-end">
@@ -746,9 +807,9 @@ export function PhoneDM() {
                   <div className="dm-empty">새로운 대화입니다.<small>첫 메시지를 보내 보세요.</small></div>
                 )}
                 {roomMessages.map((m) => (
-                  <div key={m.id} className={"dm-message " + (m.senderId === user.id ? "dm-mine" : "dm-theirs")}>
+                  <div key={m.id} className={"dm-message " + (m.senderId === user.id ? "dm-mine" : "dm-theirs") + (m.kind === "voice" ? " dm-message-voice" : "")}>
                     <small>{m.characterName} <time>{displayTime(m.date)}</time></small>
-                    <div>{m.text}</div>
+                    {m.kind === "voice" ? <FauxVoiceMessage message={m} /> : <div className="dm-text-content">{m.text}</div>}
                   </div>
                 ))}
               </div>
@@ -758,6 +819,14 @@ export function PhoneDM() {
                 <div className="dm-archive-note">이 대화는 기록 열람만 가능합니다. 캐릭터의 플레이 권한을 확인해 주세요.</div>
               ) : (
                 <form className="dm-compose dm-compose-character" onSubmit={sendMessage}>
+                  <div className="dm-compose-switch" role="group" aria-label="메시지 유형">
+                    <button type="button" className={composeKind === "text" ? "active" : ""}
+                      aria-pressed={composeKind === "text"}
+                      onClick={() => setComposeKind("text")}>✉ 문자</button>
+                    <button type="button" className={composeKind === "voice" ? "active" : ""}
+                      aria-pressed={composeKind === "voice"}
+                      onClick={() => setComposeKind("voice")}>◉ 음성메시지</button>
+                  </div>
                   <label className="dm-sender-select">
                     <span>FROM</span>
                     <select
@@ -773,11 +842,11 @@ export function PhoneDM() {
                     <input
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      placeholder="메시지를 입력하세요…"
+                      placeholder={composeKind === "voice" ? "재생할 텍스트를 입력하세요…" : "메시지를 입력하세요…"}
                       disabled={!activeContact?.active || !sender || !!activeRoomOverride || sending}
                     />
                     <button type="submit" disabled={!message.trim() || !activeContact?.active || !sender || !!activeRoomOverride || sending}>
-                      {sending ? "···" : "전송"} <span aria-hidden="true">↗</span>
+                      {sending ? "···" : composeKind === "voice" ? "녹음 전송" : "전송"} <span aria-hidden="true">↗</span>
                     </button>
                   </div>
                   {!activeContact?.active && <small className="dm-inline-note">현재 캐릭터 사용 권한이 없어 읽기만 가능합니다.</small>}
@@ -861,6 +930,18 @@ export function PhoneDM() {
               </div>
             </div>
           )}
+            </div>
+          </div>
+          <div className="dm-retro-controls" aria-hidden="true">
+            <span className="dm-retro-softkey">C</span>
+            <span className="dm-retro-centerkey"><i /></span>
+            <span className="dm-retro-softkey">↵</span>
+          </div>
+          <div className="dm-retro-keypad" aria-hidden="true">
+            {["1","2 abc","3 def","4 ghi","5 jkl","6 mno","7 pqrs","8 tuv","9 wxyz","✱","0","＃"].map((key) => (
+              <span key={key}>{key}</span>
+            ))}
+          </div>
         </aside>
       )}
     </>
