@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 
-export default function PhoneDM() {
+export function PhoneDM() {
   const [open, setOpen] = useState(false);
   const [au, setAu] = useState("현대 AU");
   const [contact, setContact] = useState("캐릭터 A");
