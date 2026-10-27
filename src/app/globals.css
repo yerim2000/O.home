@@ -3465,3 +3465,152 @@ body.edit-on .main-grid.gridlines .wgt{outline-offset:0}
   }
   .dm-retro-phone .dm-retro-keypad .dm-retro-key { height: 20px; padding-top: 2px; }
 }
+
+
+/* Roleplay room image attachments — keep existing author-side bubble alignment. */
+.rp-input .rp-file-input {
+  display: none;
+}
+.rp-input .rp-compose-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: 7px;
+}
+.rp-input .rp-compose-body .k-textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.rp-input .rp-attach-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 39px;
+  height: 42px;
+  min-width: 39px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--sub);
+  background: var(--panel-solid);
+  transition: background .15s, color .15s;
+}
+.rp-input .rp-attach-button:hover {
+  background: var(--hover, #eef0f2);
+  color: var(--ink);
+}
+.rp-input .rp-attach-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.rp-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  color: var(--sub);
+  background: var(--panel);
+}
+.rp-image-preview img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+.rp-image-preview span {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+.rp-image-preview button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel-solid);
+  color: var(--sub);
+  cursor: pointer;
+}
+.rp-image-preview button:hover {
+  color: var(--ink);
+  background: var(--hover, #eef0f2);
+}
+.rp-msgs .rp-bubble-text,
+.rp-msgs .rp-desc-text {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rp-msgs .rp-chat-image {
+  display: block;
+  overflow: hidden;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: zoom-in;
+}
+.rp-msgs .rp-bubble-text + .rp-chat-image,
+.rp-msgs .rp-desc-text + .rp-chat-image {
+  margin-top: 9px;
+}
+.rp-msgs .rp-chat-image img {
+  display: block;
+  max-width: min(290px, 100%);
+  max-height: 330px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.rp-msgs .msg-desc .rp-chat-image {
+  margin-left: auto;
+  margin-right: auto;
+}
+.rp-msgs .rp-attach-unavailable {
+  display: block;
+  padding: 9px;
+  font-size: 11px;
+  color: var(--sub);
+}
+.rp-image-lightbox {
+  cursor: zoom-out;
+}
+.rp-image-lightbox img {
+  max-width: 92vw;
+  max-height: 88vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  cursor: default;
+}
+@media (max-width: 620px) {
+  .rp-input { gap: 6px; padding: 8px; }
+  .rp-input .rp-attach-button { min-width: 34px; width: 34px; height: 39px; }
+  .rp-input .rp-attach-button svg { width: 16px; height: 16px; }
+  .rp-image-preview img { width: 39px; height: 39px; }
+  .rp-msgs .rp-chat-image img {
+    max-width: min(240px, 100%);
+    max-height: 280px;
+  }
+}
